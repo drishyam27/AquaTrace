@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AquaTrace | AIS Vessel Attribution Engine</title>
+  <meta name="description"
+    content="Aquatrace-AIS: Identify and rank vessels responsible for marine oil spills using AIS trajectory correlation and multi-factor scoring.">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <!-- Tailwind Configuration (identical to frontend-main.html) -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#F6F4EE',
+            stark: '#111111',
+            darknavy: '#0F2537',
+            skyblue: '#00A8E8',
+            sand: '#D4A373',
+            slatebody: '#2B2D42'
+          },
+          fontFamily: {
+            syne: ['Syne', 'sans-serif'],
+            serif: ['Instrument Serif', 'serif'],
+            mono: ['Space Mono', 'monospace'],
+            body: ['Plus Jakarta Sans', 'sans-serif']
+          },
+          boxShadow: {
+            brutal: '4px 4px 0px #111111',
+            'brutal-lg': '6px 6px 0px #111111',
+            'brutal-blue': '4px 4px 0px #00A8E8'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #F6F4EE;
+      color: #111111;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Marquee Animation */
+    @keyframes marquee {
+      0% {
+        transform: translateX(0%);
+      }
+
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+
+    .animate-marquee {
+      display: flex;
+      width: 200%;
+      animation: marquee 22s linear infinite;
+    }
+
+    .animate-marquee:hover {
+      animation-play-state: paused;
+    }
+
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #F6F4EE;
+      border-left: 2px solid #111111;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #0F2537;
+      border: 1px solid #111111;
+    }
+
+    /* Leaflet overrides */
+    .leaflet-container {
+      background: #091522 !important;
+      font-family: 'Space Mono', monospace !important;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #F6F4EE !important;
+      color: #111111 !important;
+      border: 2px solid #111111 !important;
+      border-radius: 0px !important;
+      box-shadow: 4px 4px 0px #111111 !important;
+    }
+
+    .leaflet-popup-tip {
+      background: #111111 !important;
+    }
+
+    /* Score bar animation */
+    @keyframes fillBar {
+      from {
+        width: 0%;
+      }
+
+      to {
+        width: var(--target-w);
+      }
+    }
+
+    .score-bar {
+      animation: fillBar 1s ease forwards;
+      animation-delay: 0.3s;
+      width: 0%;
+    }
+
+    /* Pulse ring for spill marker */
+    @keyframes ping {
+
+      75%,
+      100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    .ping-ring {
+      animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    /* Upload drag area */
+    .drag-over {
+      border-color: #00A8E8 !important;
+      background: #e0f5fe !important;
+    }
+
+    /* Vessel track pulse */
+    @keyframes dashMove {
+      to {
+        stroke-dashoffset: -20;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col selection:bg-skyblue selection:text-stark">
+
+  <!-- ============================================================ -->
+  <!-- TOP NAVIGATION HEADER                                        -->
+  <!-- ============================================================ -->
+  <header class="border-b-2 border-stark bg-cream sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+
+      <!-- Logo -->
+      <div class="flex items-center space-x-3">
+        <div
+          class="w-10 h-10 bg-darknavy border-2 border-stark flex items-center justify-center text-skyblue shadow-brutal">
+          <i class="fa-solid fa-satellite-dish text-lg"></i>
+        </div>
+        <div>
+          <span class="font-syne font-extrabold text-2xl tracking-tight text-stark block leading-none">
+            Aqua<span class="text-skyblue">Trace</span>
+          </span>
+          <span class="font-mono text-[10px] text-gray-600 tracking-wider uppercase block mt-1">
+            SIH26143 • AIS Vessel Attribution Engine
+          </span>
+        </div>
+      </div>
+
+      <!-- Page label -->
+      <div class="flex items-center space-x-3">
+        <div
+          class="hidden sm:flex items-center space-x-2 border-2 border-stark bg-white px-3 py-1.5 font-mono text-xs shadow-brutal">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="font-bold text-darknavy">AIS ENGINE ONLINE</span>
+        </div>
+        <div
+          class="bg-skyblue text-stark px-4 py-2 font-mono text-xs font-bold uppercase border-2 border-stark shadow-brutal">
+          <i class="fa-solid fa-ship mr-1"></i> Attribution
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- ============================================================ -->
+  <!-- HERO EDITORIAL SECTION                                       -->
+  <!-- ============================================================ -->
+  <section class="border-b-2 border-stark bg-cream pt-10 pb-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+
+      <div class="flex items-center space-x-2 font-mono text-xs uppercase text-darknavy font-bold mb-3">
+        <span class="bg-darknavy text-skyblue px-2 py-0.5">AIS ATTRIBUTION MODULE</span>
+        <span>— VESSEL RANKING &amp; EVIDENCE SCORING</span>
+      </div>
+
+      <h1 class="font-syne font-extrabold text-4xl sm:text-6xl lg:text-7xl leading-none text-stark tracking-tight">
+        WHO <span
+          class="font-serif italic font-normal text-darknavy underline decoration-skyblue decoration-4">DISCHARGED?</span>
+      </h1>
+
+      <p class="mt-4 font-body text-base sm:text-lg text-slatebody max-w-3xl leading-relaxed">
+        Upload an AIS dataset or generate a simulated test case to run the Aquatrace-AIS attribution pipeline.
+        The engine scores each vessel on five evidence dimensions and ranks them by likelihood of being responsible for
+        the marine discharge.
+      </p>
+
+      <!-- Metric Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+        <div class="border-2 border-stark bg-white p-4 shadow-brutal hover:-translate-y-1 transition-transform">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Scoring Factors</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1">05</div>
+          <div class="font-mono text-[11px] text-skyblue mt-1">Spatial · Temporal · Traj. · Drift · Behaviour</div>
+        </div>
+        <div class="border-2 border-stark bg-white p-4 shadow-brutal hover:-translate-y-1 transition-transform">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Search Radius</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-darknavy mt-1">38<span
+              class="text-lg text-skyblue font-mono">km</span></div>
+          <div class="font-mono text-[11px] text-gray-600 mt-1">Demo Window — Red Sea</div>
+        </div>
+        <div class="border-2 border-stark bg-white p-4 shadow-brutal hover:-translate-y-1 transition-transform">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Demo Vessels</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-skyblue mt-1" id="stat-vessel-count">—</div>
+          <div class="font-mono text-[11px] text-gray-600 mt-1">Generated on test run</div>
+        </div>
+        <div class="border-2 border-stark bg-white p-4 shadow-brutal hover:-translate-y-1 transition-transform">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Top Score</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1" id="stat-top-score">—</div>
+          <div class="font-mono text-[11px] text-emerald-600 mt-1" id="stat-confidence">Run analysis to see result</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- MARQUEE RIBBON                                               -->
+  <!-- ============================================================ -->
+  <div
+    class="bg-stark text-cream border-b-2 border-stark overflow-hidden py-2.5 font-mono text-xs uppercase font-bold tracking-wider">
+    <div class="animate-marquee whitespace-nowrap">
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> AIS ATTRIBUTION
+        ENGINE READY — UPLOAD CSV OR RUN DEMO</span>
+      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> SEARCH ORIGIN: LAT 14.3389
+        N, LON 42.1287 E — RED SEA TRANSIT CORRIDOR</span>
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SCORING: SPATIAL
+        25% · TEMPORAL 25% · TRAJECTORY 20% · DRIFT 20% · BEHAVIOUR 10%</span>
+      <span class="mx-6"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i> DEMO DATA — INVESTIGATION
+        RESULTS ARE NOT LEGAL DETERMINATIONS</span>
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> AIS ATTRIBUTION
+        ENGINE READY — UPLOAD CSV OR RUN DEMO</span>
+      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> SEARCH ORIGIN: LAT 14.3389
+        N, LON 42.1287 E — RED SEA TRANSIT CORRIDOR</span>
+    </div>
+  </div>
+
+
+  <!-- ============================================================ -->
+  <!-- MAIN WORKSPACE                                               -->
+  <!-- ============================================================ -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+
+    <!-- ── INPUT CONTROLS ROW ──────────────────────────────────── -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+      <!-- UPLOAD AIS DATA -->
+      <div class="border-2 border-stark bg-white shadow-brutal p-6">
+        <div
+          class="font-mono text-xs font-bold uppercase text-gray-500 border-b-2 border-stark pb-3 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-file-csv text-skyblue"></i> Upload AIS Data
+        </div>
+        <div id="drop-zone"
+          class="border-2 border-dashed border-stark bg-cream p-8 text-center cursor-pointer transition-colors hover:border-skyblue hover:bg-blue-50"
+          onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-darknavy mb-3 block"></i>
+          <p class="font-mono text-xs font-bold text-stark">Drop CSV here or click to browse</p>
+          <p class="font-mono text-[10px] text-gray-500 mt-2">Required columns: MMSI, BaseDateTime, LAT, LON, SOG, COG,
+            VesselType, VesselName</p>
+        </div>
+        <input type="file" id="file-input" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+        <div id="upload-status" class="mt-3 font-mono text-xs text-gray-500 hidden"></div>
+        <button id="run-upload-btn" onclick="runUploadAnalysis()"
+          class="w-full mt-4 bg-darknavy text-cream border-2 border-stark font-mono text-xs font-bold uppercase py-2.5 shadow-brutal hover:bg-slatebody transition-all hidden">
+          <i class="fa-solid fa-magnifying-glass mr-1.5"></i> Run Attribution on Uploaded Data
+        </button>
+      </div>
+
+      <!-- TEST WITH RANDOM DATA -->
+      <div class="border-2 border-stark bg-white shadow-brutal p-6">
+        <div
+          class="font-mono text-xs font-bold uppercase text-gray-500 border-b-2 border-stark pb-3 mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-flask text-amber-500"></i> Simulated Test Case
+        </div>
+        <div class="bg-amber-50 border-2 border-amber-400 p-4 mb-4">
+          <p class="font-body text-sm text-amber-900 leading-relaxed">
+            Explore a realistic maritime incident scenario using generated AIS vessel activity.
+          </p>
+          <p class="font-body text-sm text-amber-900 mt-2 leading-relaxed">
+            Review vessel movements, investigate the incident area, and see how Aquatrace-AIS identifies the vessel with the strongest overall evidence.
+          </p>
+          <ul class="mt-3 space-y-1 font-mono text-[11px] text-amber-800">
+            <li><i class="fa-solid fa-check text-emerald-600 mr-1.5"></i> 7–8 vessels included</li>
+            <li><i class="fa-solid fa-check text-emerald-600 mr-1.5"></i> Realistic vessel movement patterns</li>
+            <li><i class="fa-solid fa-check text-emerald-600 mr-1.5"></i> Automated vessel attribution</li>
+            <li><i class="fa-solid fa-check text-emerald-600 mr-1.5"></i> Interactive investigation results</li>
+          </ul>
+          <p class="font-mono text-[10px] text-amber-600 italic mt-3">Simulation mode — generated data for demonstration purposes.</p>
+        </div>
+        <button id="run-demo-btn" onclick="runDemoAnalysis()"
+          class="w-full bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-3 shadow-brutal hover:bg-sky-400 transition-all flex items-center justify-center gap-2">
+          <i class="fa-solid fa-play"></i> Test with Random Data
+        </button>
+      </div>
+
+    </div>
+
+
+    <!-- ── RESULTS SECTION (hidden until analysis runs) ────────── -->
+    <div id="results-section" class="hidden space-y-8">
+
+      <!-- DEMO DISCLAIMER BANNER -->
+      <div id="demo-banner"
+        class="hidden border-2 border-amber-400 bg-amber-50 px-4 py-3 font-mono text-xs text-amber-800 flex items-center gap-3">
+        <i class="fa-solid fa-flask text-amber-500 text-lg shrink-0"></i>
+        <span><strong>SIMULATED DATA</strong> — Results below are generated from a randomised demo dataset. The spill
+          vessel is intentionally constructed to score highest. Not a real incident.</span>
+      </div>
+
+      <!-- TOP ROW: MAP + CANDIDATE CARD -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- MAP (2 cols) -->
+        <div class="lg:col-span-2 flex flex-col">
+          <div class="border-2 border-stark bg-darknavy shadow-brutal flex flex-col h-[540px]">
+            <!-- Map header -->
+            <div
+              class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
+              <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 bg-skyblue inline-block border border-white"></span>
+                <span class="font-bold tracking-wider">VESSEL ATTRIBUTION MAP — AIS TRACK VISUALISATION</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>LIVE RENDER</span>
+              </div>
+            </div>
+
+            <!-- Leaflet Map -->
+            <div id="attribution-map" class="flex-grow w-full h-full"></div>
+
+            <!-- Map legend -->
+            <div
+              class="border-t-2 border-stark bg-cream px-4 py-2 flex flex-wrap items-center gap-4 font-mono text-[10px] text-stark">
+              <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 border border-stark mr-1"></span> Spill
+                Origin</span>
+              <span><span class="inline-block w-8 h-1 bg-red-500 mr-1"
+                  style="border-top: 2px dashed #ef4444;display:inline-block;vertical-align:middle;"></span> Suspect
+                Track</span>
+              <span><span class="inline-block w-3 h-3 bg-skyblue/50 border border-skyblue mr-1"></span> Other
+                Vessels</span>
+              <span><span class="inline-block w-3 h-3 bg-blue-400/40 border border-blue-400 mr-1"></span> Search
+                Radius</span>
+              <span><span class="inline-block w-8 h-1 bg-amber-400 mr-1"
+                  style="border-top: 2px dashed #fbbf24;display:inline-block;vertical-align:middle;"></span> Drift
+                Path</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT SIDE: TOP CANDIDATE -->
+        <div class="space-y-5">
+
+          <!-- Highest-ranked candidate card -->
+          <div class="border-2 border-stark bg-white p-5 shadow-brutal">
+            <div class="flex items-center justify-between border-b-2 border-stark pb-3 mb-4">
+              <span class="font-mono text-xs font-bold uppercase text-gray-500">Highest-Ranked Candidate</span>
+              <span id="top-confidence-badge"
+                class="bg-red-500 text-white font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">—</span>
+            </div>
+
+            <div class="flex items-start space-x-4">
+              <div
+                class="w-16 h-16 bg-darknavy border-2 border-stark flex items-center justify-center text-cream shrink-0">
+                <i class="fa-solid fa-ship text-2xl text-skyblue"></i>
+              </div>
+              <div>
+                <h3 id="top-vessel-name" class="font-syne font-bold text-xl text-stark leading-tight">—</h3>
+                <div id="top-vessel-mmsi" class="font-mono text-xs text-slatebody mt-1">MMSI: —</div>
+                <div id="top-vessel-type" class="font-mono text-xs text-darknavy mt-0.5">Type: —</div>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-2 border-t-2 border-stark pt-3 font-mono text-xs">
+              <div class="flex justify-between">
+                <span class="text-gray-600">Total Attribution Score:</span>
+                <span id="top-total-score" class="font-bold text-red-600">—</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Min. Distance from Origin:</span>
+                <span id="top-min-dist" class="font-bold text-emerald-600">— km</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">Time Offset from Discharge:</span>
+                <span id="top-time-offset" class="font-bold">— hrs</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">AIS Gaps Detected:</span>
+                <span id="top-ais-gaps" class="font-bold text-amber-600">—</span>
+              </div>
+            </div>
+
+            <button onclick="openDossierModal()"
+              class="w-full mt-4 bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-2.5 shadow-brutal hover:bg-sky-400 transition-all">
+              <i class="fa-solid fa-file-lines mr-1.5"></i> View Full Evidence Dossier
+            </button>
+          </div>
+
+          <!-- Component scores breakdown -->
+          <div class="border-2 border-stark bg-white p-5 shadow-brutal">
+            <div
+              class="font-mono text-xs font-bold uppercase text-stark border-b-2 border-stark pb-2 mb-4 flex items-center gap-2">
+              <i class="fa-solid fa-chart-bar text-skyblue"></i> Component Scores — #1 Candidate
+            </div>
+            <div id="component-scores" class="space-y-3 font-mono text-xs">
+              <!-- Injected by JS -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ── FULL VESSEL TABLE ──────────────────────────────────── -->
+      <div class="border-2 border-stark bg-white shadow-brutal p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 mb-4 border-b-2 border-stark gap-4">
+          <div>
+            <h2 class="font-syne font-bold text-2xl text-stark">Vessel Attribution Ranking Matrix</h2>
+            <p class="font-mono text-xs text-gray-600 mt-0.5">All analysed vessels sorted by composite attribution score
+              (highest → lowest).</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <input id="table-search" type="text" placeholder="Search vessel / MMSI..." oninput="filterTable(this.value)"
+              class="border-2 border-stark px-3 py-1.5 font-mono text-xs bg-cream focus:outline-none focus:bg-white">
+            <button class="bg-stark text-cream px-3 py-1.5 font-mono text-xs font-bold border-2 border-stark">
+              <i class="fa-solid fa-filter"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left font-mono text-xs border-collapse">
+            <thead>
+              <tr class="bg-darknavy text-cream border-2 border-stark">
+                <th class="p-3 border-r border-stark/50">RANK</th>
+                <th class="p-3 border-r border-stark/50">VESSEL NAME</th>
+                <th class="p-3 border-r border-stark/50">MMSI</th>
+                <th class="p-3 border-r border-stark/50">TYPE</th>
+                <th class="p-3 border-r border-stark/50">MIN DIST (KM)</th>
+                <th class="p-3 border-r border-stark/50">SCORE</th>
+                <th class="p-3 border-r border-stark/50">CONFIDENCE</th>
+                <th class="p-3">ACTION</th>
+              </tr>
+            </thead>
+            <tbody id="vessel-table-body" class="divide-y-2 divide-stark">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <!-- /results-section -->
+
+    <!-- Empty state -->
+    <div id="empty-state" class="border-2 border-dashed border-stark bg-cream/50 p-12 text-center mt-4">
+      <i class="fa-solid fa-satellite-dish text-4xl text-gray-300 mb-4 block"></i>
+      <p class="font-syne font-bold text-xl text-gray-400">No analysis results yet</p>
+      <p class="font-mono text-xs text-gray-400 mt-2">Upload an AIS CSV file or click "Test with Random Data" to run the
+        attribution pipeline.</p>
+    </div>
+
+  </main>
+
+
+  <!-- ============================================================ -->
+  <!-- FOOTER                                                       -->
+  <!-- ============================================================ -->
+  <footer class="border-t-2 border-stark bg-stark text-cream py-8 px-4 sm:px-6 lg:px-8 mt-12">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs">
+      <div>
+        <span class="font-syne font-bold text-lg text-white">AquaTrace</span>
+        <span class="text-gray-400 ml-2">| SIH26143 AIS Vessel Attribution Engine</span>
+      </div>
+      <div class="text-gray-400">Scoring: Spatial · Temporal · Trajectory · Drift · Behaviour</div>
+    </div>
+    <div class="max-w-7xl mx-auto mt-4 pt-4 border-t border-gray-700 font-mono text-[10px] text-gray-500">
+      Prototype / demonstration interface. Attribution scores are analytical outputs and are not legal determinations of
+      responsibility.
+    </div>
+  </footer>
+
+
+  <!-- ============================================================ -->
+  <!-- DOSSIER MODAL                                                -->
+  <!-- ============================================================ -->
+  <div id="dossier-modal"
+    style="display:none;position:fixed;inset:0;background:rgba(17,17,17,0.82);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;padding:1rem;">
+    <div class="border-2 border-stark bg-cream max-w-3xl w-full p-6 shadow-brutal max-h-[90vh] overflow-y-auto">
+
+      <div class="flex justify-between items-start border-b-2 border-stark pb-4 mb-4">
+        <div>
+          <span
+            class="bg-darknavy text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">ATTRIBUTION
+            DOSSIER</span>
+          <h2 id="modal-title" class="font-syne font-extrabold text-2xl text-stark mt-1">—</h2>
+          <p id="modal-subtitle" class="font-mono text-xs text-gray-600">—</p>
+        </div>
+        <button onclick="closeDossierModal()"
+          class="w-8 h-8 bg-stark text-cream font-bold border-2 border-stark hover:bg-red-600">✕</button>
+      </div>
+
+      <div id="modal-content" class="space-y-4 font-mono text-xs">
+        <!-- Injected by JS -->
+      </div>
+
+      <div class="mt-6 flex justify-end space-x-3 font-mono text-xs font-bold">
+        <button onclick="closeDossierModal()" class="px-4 py-2 border-2 border-stark bg-white text-stark">Close
+          Window</button>
+        <button onclick="alert('DEMO ACTION: Export as PDF (prototype only).')"
+          class="px-4 py-2 border-2 border-stark bg-skyblue text-stark shadow-brutal">
+          <i class="fa-solid fa-download mr-1"></i> Export Dossier (Demo)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ============================================================ -->
+  <!-- VESSEL DETAIL MODAL                                          -->
+  <!-- ============================================================ -->
+  <div id="vessel-modal"
+    style="display:none;position:fixed;inset:0;background:rgba(17,17,17,0.82);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;padding:1rem;">
+    <div class="border-2 border-stark bg-cream max-w-xl w-full p-6 shadow-brutal max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-start border-b-2 border-stark pb-4 mb-4">
+        <div>
+          <span
+            class="bg-darknavy text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">VESSEL
+            DETAIL</span>
+          <h2 id="vmodal-name" class="font-syne font-extrabold text-xl text-stark mt-1">—</h2>
+        </div>
+        <button onclick="closeVesselModal()"
+          class="w-8 h-8 bg-stark text-cream font-bold border-2 border-stark hover:bg-red-600">✕</button>
+      </div>
+      <div id="vmodal-content" class="space-y-3 font-mono text-xs"></div>
+      <div class="mt-6 flex justify-end">
+        <button onclick="closeVesselModal()"
+          class="px-4 py-2 border-2 border-stark bg-white text-stark font-mono text-xs font-bold">Close</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================ -->
+  <!-- JAVASCRIPT — AIS SCORING ENGINE + VISUALISATION             -->
+  <!-- ============================================================ -->
+  <script>
+
+    // ─── Fix Leaflet marker icons ────────────────────────────────
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png'
+    });
+
+    // ─── Global state ────────────────────────────────────────────
+    let attributionMap = null;
+    let analysisResults = [];
+    let uploadedCandidates = [];
+
+    // ─── Search window (matching run_attribution.py defaults) ────
+    const SEARCH_WINDOW = {
+      center_lat: 14.3389,
+      center_lon: 42.1287,
+      radius_km: 38.0,
+      time_start: new Date('2024-03-14T22:32:00Z'),
+      time_end: new Date('2024-03-15T04:32:00Z'),
+      discharge_time: new Date('2024-03-14T22:32:00Z')
+    };
+
+    const WEIGHTS = { spatial: 0.25, temporal: 0.25, trajectory: 0.20, drift: 0.20, behaviour: 0.10 };
+
+    // ─── Simulated drift back-track path ────────────────────────
+    const BACKTRACK_PATH = [
+      { lat: 14.3389, lon: 42.1287 },
+      { lat: 14.31, lon: 42.10 },
+      { lat: 14.28, lon: 42.07 },
+      { lat: 14.25, lon: 42.04 }
+    ];
+
+    // ─── Haversine distance (km) ─────────────────────────────────
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const toRad = d => d * Math.PI / 180;
+      const dlat = toRad(lat2 - lat1);
+      const dlon = toRad(lon2 - lon1);
+      const a = Math.sin(dlat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dlon / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(a));
+    }
+
+    // ─── Scoring sub-functions ───────────────────────────────────
+    function scoreSpatial(track, cLat, cLon, radiusKm) {
+      const minDist = Math.min(...track.map(p => haversine(p.lat, p.lon, cLat, cLon)));
+      return { score: Math.max(0, 100 * (1 - minDist / radiusKm)), minDist };
+    }
+
+    function scoreTemporal(track, dischargeTime, windowHrs = 6) {
+      const dt = dischargeTime.getTime();
+      const minDiff = Math.min(...track.map(p => Math.abs((new Date(p.time).getTime() - dt) / 3600000)));
+      return { score: Math.max(0, 100 * (1 - minDiff / windowHrs)), timeDiff: minDiff };
+    }
+
+    function scoreTrajectory(track, cLat, cLon) {
+      const minDist = Math.min(...track.map(p => haversine(p.lat, p.lon, cLat, cLon)));
+      return { score: Math.max(0, 100 * (1 - minDist / 50)), minDist };
+    }
+
+    function scoreDrift(track, backtrackPath) {
+      if (!backtrackPath || backtrackPath.length === 0) return { score: 50, minDist: 0 };
+      let minDist = Infinity;
+      for (const bp of backtrackPath) {
+        for (const p of track) {
+          const d = haversine(p.lat, p.lon, bp.lat, bp.lon);
+          if (d < minDist) minDist = d;
+        }
+      }
+      return { score: Math.max(0, 100 * (1 - minDist / 30)), minDist };
+    }
+
+    function scoreBehaviour(aisGaps) {
+      let score = 0;
+      const anomalies = [];
+      if (aisGaps && aisGaps.length > 0) {
+        score += 40;
+        anomalies.push({ type: 'AIS_GAP', detail: `${aisGaps.length} gap(s) detected.` });
+      }
+      return { score: Math.min(100, score), anomalies };
+    }
+
+    function detectAisGaps(track, thresholdMin = 30) {
+      const gaps = [];
+      for (let i = 1; i < track.length; i++) {
+        const gapMin = (new Date(track[i].time) - new Date(track[i - 1].time)) / 60000;
+        if (gapMin > thresholdMin) {
+          gaps.push({ gap_start: track[i - 1].time, gap_end: track[i].time, gap_duration_minutes: Math.round(gapMin) });
+        }
+      }
+      return gaps;
+    }
+
+    function scoreVessel(vessel) {
+      const track = vessel.track;
+      const { center_lat, center_lon, radius_km, discharge_time } = SEARCH_WINDOW;
+      const aisGaps = detectAisGaps(track);
+
+      const sp = scoreSpatial(track, center_lat, center_lon, radius_km);
+      const tm = scoreTemporal(track, discharge_time);
+      const tr = scoreTrajectory(track, center_lat, center_lon);
+      const dr = scoreDrift(track, BACKTRACK_PATH);
+      const bh = scoreBehaviour(aisGaps);
+
+      const total = +(
+        WEIGHTS.spatial * sp.score +
+        WEIGHTS.temporal * tm.score +
+        WEIGHTS.trajectory * tr.score +
+        WEIGHTS.drift * dr.score +
+        WEIGHTS.behaviour * bh.score
+      ).toFixed(1);
+
+      const confidence = total >= 70 ? 'HIGH' : total >= 45 ? 'MEDIUM' : 'LOW';
+
+      return {
+        mmsi: vessel.mmsi,
+        vessel_name: vessel.vessel_name,
+        vessel_type: vessel.vessel_type,
+        track,
+        score: total,
+        confidence,
+        component_scores: {
+          spatial: +sp.score.toFixed(1),
+          temporal: +tm.score.toFixed(1),
+          trajectory: +tr.score.toFixed(1),
+          drift: +dr.score.toFixed(1),
+          behaviour: +bh.score.toFixed(1)
+        },
+        evidence: {
+          min_distance_from_origin_km: +sp.minDist.toFixed(2),
+          time_offset_from_discharge_hours: +tm.timeDiff.toFixed(2),
+          ais_gaps: aisGaps,
+          anomalies: bh.anomalies,
+          drift_min_dist: +dr.minDist.toFixed(2)
+        }
+      };
+    }
+
+    // ─── Randomisation helpers ────────────────────────────────────
+    const rnd = (min, max) => +(Math.random() * (max - min) + min).toFixed(5);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const clamp = (v, mn, mx) => Math.min(mx, Math.max(mn, v));
+
+    // Produce a track point guaranteed inside a maritime zone
+    function safePoint(baseLat, baseLon, dlat, dlon, zone, time) {
+      return {
+        lat: +clamp(baseLat + dlat, zone.latMin + 0.05, zone.latMax - 0.05).toFixed(5),
+        lon: +clamp(baseLon + dlon, zone.lonMin + 0.05, zone.lonMax - 0.05).toFixed(5),
+        time
+      };
+    }
+
+    // ─── Fixed open-ocean simulation zone: Central Pacific ────────
+    // Bounding box: 0°N ±8°, 160°W ±8° — confirmed 100% open ocean.
+    // Nearest land: Hawaii ~2,200 km N; Samoa ~2,000 km SW; no islands inside box.
+    const PACIFIC_ZONE = {
+      name: 'Central Pacific Ocean',
+      latMin: -8.0,  latMax:  8.0,   // 8°S – 8°N
+      lonMin: -168.0, lonMax: -152.0, // 168°W – 152°W
+      zoom: 6
+    };
+
+    const VESSEL_NAMES = [
+      'MV PACIFIC MARINER','MT CORAL VOYAGER','MV EQUATORIAL STAR','MT DEEP HORIZON',
+      'MV OCEAN ATLAS','MT PACIFIC CROWN','MV AZURE TRADER','MT SEA SENTINEL',
+      'MV TROPIC WIND','MT BLUE MERIDIAN','MV SOUTHERN CROSS','MT PACIFIC VANGUARD',
+      'MV WAVE RUNNER','MT OPEN OCEAN','MV TRANSPACIFIC','MT ODYSSEY SPIRIT'
+    ];
+    const VESSEL_TYPES = [
+      'Crude Oil Tanker','Chemical Tanker','Product Tanker','LNG Carrier',
+      'Bulk Carrier','Container Ship','General Cargo','Oil/Chemical Tanker'
+    ];
+    const MMSI_PREFIXES = ['211','355','538','477','636','205','352','319','431','419','657','566'];
+
+    function freshMMSI(prefix, idx) {
+      return prefix + String(100000 + Math.floor(Math.random() * 899999)).padStart(6,'0') + idx;
+    }
+
+    // ─── Demo data generator — fixed Pacific zone, 100% ocean ─────
+    function generateDemoVessels() {
+      const zone = PACIFIC_ZONE;
+
+      // Spill origin stays in the inner 60% of the zone — at least 3° from any edge
+      const latPad = (zone.latMax - zone.latMin) * 0.20; // ±3.2°
+      const lonPad = (zone.lonMax - zone.lonMin) * 0.20; // ±3.2°
+      const CL = rnd(zone.latMin + latPad, zone.latMax - latPad);   // -4.8° to +4.8°N
+      const CC = rnd(zone.lonMin + lonPad, zone.lonMax - lonPad);   // -164.8° to -155.2°W
+      const dischargeTime = new Date(Date.now() - Math.random() * 72 * 3600000);
+
+      // Update global SEARCH_WINDOW so scoring uses the new origin
+      SEARCH_WINDOW.center_lat = CL;
+      SEARCH_WINDOW.center_lon = CC;
+      SEARCH_WINDOW.discharge_time = dischargeTime;
+      SEARCH_WINDOW.time_start = new Date(dischargeTime.getTime() - 6 * 3600000);
+      SEARCH_WINDOW.time_end   = new Date(dischargeTime.getTime() + 6 * 3600000);
+
+      // Drift backtrack — small clamped offsets, stays well inside ocean box
+      const driftDlat = rnd(-0.015, 0.015);
+      const driftDlon = rnd(-0.015, 0.015);
+      BACKTRACK_PATH.length = 0;
+      for (let i = 0; i < 4; i++) {
+        BACKTRACK_PATH.push(safePoint(CL, CC, -i * 0.022 + driftDlat, -i * 0.022 + driftDlon, zone, null));
+      }
+
+      const t = hrs => new Date(dischargeTime.getTime() + hrs * 3600000).toISOString();
+
+      const usedNames = new Set();
+      function uniqueName() {
+        let n;
+        do { n = pick(VESSEL_NAMES); } while (usedNames.has(n));
+        usedNames.add(n); return n;
+      }
+
+      const vessels = [];
+      const vesselCount = 7 + Math.floor(Math.random() * 2);
+
+      // ── SPILL VESSEL — approaches from random angle, exits on slight deviation
+      //    All offsets ≤ 0.45° — safely within zone inner bounds
+      const ang1 = rnd(0, Math.PI * 2);
+      const ang2 = ang1 + rnd(-0.6, 0.6);
+      vessels.push({
+        mmsi: freshMMSI(pick(MMSI_PREFIXES), 1),
+        vessel_name: uniqueName(),
+        vessel_type: pick(['Crude Oil Tanker', 'Product Tanker', 'Oil/Chemical Tanker']),
+        track: [
+          safePoint(CL, CC,  Math.sin(ang1)*0.22,  Math.cos(ang1)*0.22, zone, t(-2.6)),
+          safePoint(CL, CC,  Math.sin(ang1)*0.11,  Math.cos(ang1)*0.11, zone, t(-1.9)),
+          // ~50-min AIS gap ends here
+          safePoint(CL, CC,  rnd(-0.012, 0.012),   rnd(-0.012, 0.012),  zone, t(-0.97)),
+          safePoint(CL, CC,  Math.sin(ang2)*0.10,  Math.cos(ang2)*0.13, zone, t( 0.3)),
+          safePoint(CL, CC,  Math.sin(ang2)*0.22,  Math.cos(ang2)*0.28, zone, t( 1.5)),
+          safePoint(CL, CC,  Math.sin(ang2)*0.34,  Math.cos(ang2)*0.42, zone, t( 2.9))
+        ]
+      });
+
+      // ── REMAINING VESSELS — varied evidence profiles, all safePoint-clamped
+      // All dLat/dLon offsets kept ≤ ±0.65° so base + step never exits the zone
+      const profiles = [
+        { dLat: rnd( 0.10, 0.18), dLon: rnd(-0.22,-0.08), tStart: -5.5, tEnd: -0.5, steps: 4, anchored: false },
+        { dLat: rnd(-0.07, 0.07), dLon: rnd(-0.09, 0.09), tStart: -11,  tEnd: -6.5, steps: 3, anchored: false },
+        { dLat: rnd( 0.28, 0.40), dLon: rnd( 0.30, 0.45), tStart: -1.5, tEnd:  0.8, steps: 3, anchored: false },
+        { dLat: rnd(-0.38,-0.26), dLon: rnd(-0.42,-0.28), tStart: -13,  tEnd: -9.0, steps: 2, anchored: false },
+        { dLat: rnd(-0.22,-0.14), dLon: rnd(-0.26,-0.16), tStart: -3.5, tEnd:  2.5, steps: 5, anchored: false },
+        { dLat: rnd( 0.45, 0.60), dLon: rnd(-0.50,-0.38), tStart: -2.5, tEnd: -0.5, steps: 2, anchored: false },
+        { dLat: rnd( 0.18, 0.28), dLon: rnd( 0.20, 0.32), tStart: -4.5, tEnd:  2.5, steps: 4, anchored: true  }
+      ];
+
+      for (let i = 1; i < vesselCount; i++) {
+        const p = profiles[(i - 1) % profiles.length];
+        // Mirror offset into a random quadrant so vessels surround the spill area
+        const sLat = p.dLat * (Math.random() < 0.5 ? 1 : -1);
+        const sLon = p.dLon * (Math.random() < 0.5 ? 1 : -1);
+        // Base position clamped with 0.5° safety margin from zone edges
+        const baseLat = clamp(CL + sLat, zone.latMin + 0.5, zone.latMax - 0.5);
+        const baseLon = clamp(CC + sLon, zone.lonMin + 0.5, zone.lonMax - 0.5);
+        const tRange = p.tEnd - p.tStart;
+        const dir = rnd(0, Math.PI * 2);
+        const spd = rnd(0.04, 0.10); // small step size — stays well inside zone
+
+        const track = [];
+        for (let s = 0; s < p.steps; s++) {
+          const frac  = p.steps > 1 ? s / (p.steps - 1) : 0;
+          const hrs   = p.tStart + frac * tRange;
+          const noise = p.anchored ? rnd(-0.003, 0.003) : rnd(-0.010, 0.010);
+          const dlat  = p.anchored ? noise : Math.sin(dir) * spd * s + noise;
+          const dlon  = p.anchored ? noise : Math.cos(dir) * spd * s + noise;
+          track.push(safePoint(baseLat, baseLon, dlat, dlon, zone, t(hrs)));
+        }
+
+        vessels.push({
+          mmsi: freshMMSI(pick(MMSI_PREFIXES), i + 1),
+          vessel_name: uniqueName(),
+          vessel_type: pick(VESSEL_TYPES),
+          track
+        });
+      }
+
+      return vessels;
+    }
+
+    // ─── Run Demo Analysis ────────────────────────────────────────
+    function runDemoAnalysis() {
+      const btn = document.getElementById('run-demo-btn');
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Generating scenario…';
+      btn.disabled = true;
+
+      // Destroy existing map so a fresh one is rendered at the new origin
+      if (attributionMap) {
+        attributionMap.remove();
+        attributionMap = null;
+      }
+
+      setTimeout(() => {
+        const vessels = generateDemoVessels(); // randomises SEARCH_WINDOW internally
+        const results = vessels.map(v => scoreVessel(v));
+        results.sort((a, b) => b.score - a.score);
+        results.forEach((r, i) => r.rank = i + 1);
+
+        analysisResults = results;
+
+        document.getElementById('demo-banner').classList.remove('hidden');
+        showResults(results, true);
+
+        btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i> Re-run Random Data';
+        btn.disabled = false;
+      }, 700);
+    }
+
+    // ─── Upload handling ─────────────────────────────────────────
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.add('drag-over');
+    }
+    function handleDragLeave(e) {
+      document.getElementById('drop-zone').classList.remove('drag-over');
+    }
+    function handleDrop(e) {
+      e.preventDefault();
+      document.getElementById('drop-zone').classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(file);
+    }
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (file) processFile(file);
+    }
+
+    function processFile(file) {
+      if (!file.name.endsWith('.csv')) {
+        alert('Please upload a CSV file.');
+        return;
+      }
+      const statusEl = document.getElementById('upload-status');
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Parsing <strong>${file.name}</strong>…`;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const vessels = parseAisCSV(e.target.result);
+          uploadedCandidates = vessels;
+          statusEl.innerHTML = `<i class="fa-solid fa-check text-emerald-600 mr-1"></i> Loaded <strong>${file.name}</strong> — ${vessels.length} vessels found.`;
+          document.getElementById('run-upload-btn').classList.remove('hidden');
+        } catch (err) {
+          statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1"></i> Parse error: ${err.message}`;
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function parseAisCSV(csvText) {
+      const lines = csvText.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+      const colMap = {
+        'MMSI': 'mmsi', 'BaseDateTime': 'timestamp', 'LAT': 'lat', 'LON': 'lon',
+        'SOG': 'sog', 'COG': 'cog', 'VesselType': 'vessel_type', 'VesselName': 'vessel_name'
+      };
+      const colIdx = {};
+      headers.forEach((h, i) => { if (colMap[h]) colIdx[colMap[h]] = i; });
+
+      const required = ['mmsi', 'timestamp', 'lat', 'lon'];
+      for (const r of required) {
+        if (colIdx[r] === undefined) throw new Error(`Missing required column mapped from "${r}"`);
+      }
+
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(',').map(c => c.trim().replace(/"/g, ''));
+        const obj = {};
+        Object.entries(colIdx).forEach(([k, i]) => obj[k] = cols[i]);
+        return obj;
+      }).filter(r => r.mmsi && r.lat && r.lon && !isNaN(+r.lat) && !isNaN(+r.lon));
+
+      const vesselMap = {};
+      rows.forEach(r => {
+        const key = r.mmsi;
+        if (!vesselMap[key]) {
+          vesselMap[key] = {
+            mmsi: r.mmsi,
+            vessel_name: r.vessel_name || `VESSEL-${r.mmsi}`,
+            vessel_type: r.vessel_type || 'Unknown',
+            track: []
+          };
+        }
+        vesselMap[key].track.push({ lat: +r.lat, lon: +r.lon, time: r.timestamp || new Date().toISOString() });
+      });
+
+      Object.values(vesselMap).forEach(v => v.track.sort((a, b) => new Date(a.time) - new Date(b.time)));
+
+      // Filter to search window
+      const { center_lat, center_lon, radius_km, time_start, time_end } = SEARCH_WINDOW;
+      const filtered = Object.values(vesselMap).filter(v => {
+        return v.track.some(p => {
+          const dist = haversine(p.lat, p.lon, center_lat, center_lon);
+          const ts = new Date(p.time);
+          return dist <= radius_km && ts >= time_start && ts <= time_end;
+        });
+      });
+
+      if (filtered.length === 0) throw new Error('No vessels matched the search window (check lat/lon/time range).');
+      return filtered;
+    }
+
+    function runUploadAnalysis() {
+      if (!uploadedCandidates.length) return;
+      document.getElementById('demo-banner').classList.add('hidden');
+      const results = uploadedCandidates.map(v => scoreVessel(v));
+      results.sort((a, b) => b.score - a.score);
+      results.forEach((r, i) => r.rank = i + 1);
+      analysisResults = results;
+      showResults(results, false);
+    }
+
+    // ─── Render results ───────────────────────────────────────────
+    function showResults(results, isDemo) {
+      document.getElementById('empty-state').classList.add('hidden');
+      document.getElementById('results-section').classList.remove('hidden');
+
+      const top = results[0];
+
+      // Update stat cards
+      document.getElementById('stat-vessel-count').textContent = results.length;
+      document.getElementById('stat-top-score').textContent = top.score;
+      document.getElementById('stat-confidence').textContent = `Confidence: ${top.confidence}`;
+
+      // Update candidate card
+      document.getElementById('top-vessel-name').textContent = top.vessel_name;
+      document.getElementById('top-vessel-mmsi').textContent = `MMSI: ${top.mmsi}`;
+      document.getElementById('top-vessel-type').textContent = `Type: ${top.vessel_type}`;
+      document.getElementById('top-total-score').textContent = `${top.score} / 100`;
+      document.getElementById('top-min-dist').textContent = `${top.evidence.min_distance_from_origin_km} km`;
+      document.getElementById('top-time-offset').textContent = `${top.evidence.time_offset_from_discharge_hours} hrs`;
+      document.getElementById('top-ais-gaps').textContent = top.evidence.ais_gaps.length > 0 ? `${top.evidence.ais_gaps.length} gap(s)` : 'None';
+
+      const confBg = top.confidence === 'HIGH' ? 'bg-red-500 text-white' : top.confidence === 'MEDIUM' ? 'bg-amber-400 text-stark' : 'bg-gray-200 text-stark';
+      document.getElementById('top-confidence-badge').className = `${confBg} font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase`;
+      document.getElementById('top-confidence-badge').textContent = `${top.confidence} CONFIDENCE`;
+
+      // Component scores
+      renderComponentScores(top.component_scores);
+
+      // Table
+      renderTable(results);
+
+      // Map
+      renderAttributionMap(results);
+    }
+
+    function renderComponentScores(cs) {
+      const LABELS = {
+        spatial: 'Spatial Proximity',
+        temporal: 'Temporal Proximity',
+        trajectory: 'Trajectory Alignment',
+        drift: 'Drift Alignment',
+        behaviour: 'Behaviour Anomaly'
+      };
+      const container = document.getElementById('component-scores');
+      container.innerHTML = Object.entries(cs).map(([key, val]) => {
+        const pct = Math.round(val);
+        const barColor = pct >= 70 ? '#ef4444' : pct >= 45 ? '#fbbf24' : '#9ca3af';
+        return `
+          <div>
+            <div class="flex justify-between mb-1">
+              <span class="text-gray-600 uppercase text-[10px]">${LABELS[key]}</span>
+              <span class="font-bold">${val}</span>
+            </div>
+            <div class="w-full bg-gray-100 border border-stark h-2">
+              <div class="score-bar h-2" style="--target-w:${pct}%;background:${barColor};"></div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderTable(results) {
+      const tbody = document.getElementById('vessel-table-body');
+      tbody.innerHTML = results.map(r => {
+        const confBg = r.confidence === 'HIGH' ? 'background:#ef4444;color:#fff;'
+          : r.confidence === 'MEDIUM' ? 'background:#fbbf24;color:#111;'
+            : 'background:#e5e7eb;color:#111;';
+        const rowBg = r.rank === 1 ? 'background:#fef2f2;' : '';
+        return `
+          <tr style="${rowBg}" data-vessel="${r.vessel_name.toLowerCase()} ${r.mmsi}" class="hover:bg-cream transition-colors">
+            <td class="p-3 font-bold">#${String(r.rank).padStart(2, '0')}</td>
+            <td class="p-3 font-bold text-darknavy">
+              ${r.rank === 1 ? '<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1" title="Top Candidate"></i>' : ''}
+              ${r.vessel_name}
+            </td>
+            <td class="p-3">${r.mmsi}</td>
+            <td class="p-3">${r.vessel_type}</td>
+            <td class="p-3">${r.evidence.min_distance_from_origin_km} km</td>
+            <td class="p-3 font-bold">${r.score}</td>
+            <td class="p-3">
+              <span style="${confBg}font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border:1px solid #111;">
+                ${r.confidence}
+              </span>
+            </td>
+            <td class="p-3">
+              <button onclick="openVesselModal('${r.mmsi}')"
+                class="${r.rank === 1 ? 'bg-skyblue' : 'bg-cream'} text-stark px-2.5 py-1 border border-stark font-bold hover:bg-sky-200 font-mono text-[10px]">
+                DETAILS
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function filterTable(query) {
+      const q = query.toLowerCase();
+      document.querySelectorAll('#vessel-table-body tr').forEach(row => {
+        row.style.display = (row.dataset.vessel || '').includes(q) ? '' : 'none';
+      });
+    }
+
+    // ─── Map rendering ────────────────────────────────────────────
+    function renderAttributionMap(results) {
+      const CL = SEARCH_WINDOW.center_lat;
+      const CC = SEARCH_WINDOW.center_lon;
+
+      // Always create a fresh map instance
+      if (attributionMap) {
+        attributionMap.remove();
+        attributionMap = null;
+      }
+      attributionMap = L.map('attribution-map').setView([CL, CC], 9);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Satellite © Esri', maxZoom: 17
+      }).addTo(attributionMap);
+
+      // Search radius circle
+      L.circle([CL, CC], {
+        radius: SEARCH_WINDOW.radius_km * 1000,
+        color: '#00A8E8', fillColor: '#00A8E8', fillOpacity: 0.06, weight: 2, dashArray: '6 4'
+      }).addTo(attributionMap).bindPopup(
+        `<b>Search Radius</b><br>${SEARCH_WINDOW.radius_km} km from discharge origin<br>` +
+        `<span style="font-size:11px;">Lat ${CL.toFixed(4)}°N, Lon ${CC.toFixed(4)}°E</span>`
+      );
+
+      // Discharge origin marker
+      const originIcon = L.divIcon({
+        className: '',
+        html: `<div style="width:20px;height:20px;background:#ef4444;border:3px solid #111;border-radius:50%;box-shadow:0 0 0 6px rgba(239,68,68,0.25);"></div>`,
+        iconSize: [20, 20], iconAnchor: [10, 10]
+      });
+      L.marker([CL, CC], { icon: originIcon }).addTo(attributionMap)
+        .bindPopup(
+          `<b style="color:#ef4444;">⚠ DISCHARGE ORIGIN</b><br>` +
+          `Lat: ${CL.toFixed(4)}°N, Lon: ${CC.toFixed(4)}°E<br>` +
+          `<span style="font-size:10px;">Time: ${SEARCH_WINDOW.discharge_time.toISOString().slice(0,16).replace('T',' ')} UTC</span>`
+        );
+
+      // Drift backtrack
+      const driftCoords = BACKTRACK_PATH.map(p => [p.lat, p.lon]);
+      L.polyline(driftCoords, { color: '#fbbf24', weight: 2, dashArray: '4 6' }).addTo(attributionMap)
+        .bindPopup('<b>Drift Back-track</b><br>Estimated spill drift path');
+
+      // Vessels
+      const COLORS = ['#ef4444','#f97316','#eab308','#84cc16','#22c55e','#14b8a6','#3b82f6','#a855f7'];
+      results.forEach((r, idx) => {
+        const isTop = r.rank === 1;
+        const color = isTop ? '#ef4444' : COLORS[idx] || '#94a3b8';
+        const trackCoords = r.track.map(p => [p.lat, p.lon]);
+
+        // Track polyline
+        L.polyline(trackCoords, {
+          color, weight: isTop ? 3 : 1.5,
+          dashArray: isTop ? '8 4' : '3 6',
+          opacity: isTop ? 1 : 0.65
+        }).addTo(attributionMap)
+          .bindPopup(`<b>${r.vessel_name}</b><br>Score: ${r.score} | ${r.confidence}`);
+
+        // Position marker at last track point
+        const lastPos = r.track[r.track.length - 1];
+        const vesselIcon = L.divIcon({
+          className: '',
+          html: `<div style="
+            width:${isTop ? 18 : 12}px;
+            height:${isTop ? 18 : 12}px;
+            background:${color};
+            border:2px solid #111;
+            border-radius:${isTop ? '0' : '50%'};
+            ${isTop ? 'transform:rotate(45deg);' : ''}
+            box-shadow:0 0 0 ${isTop ? 5 : 0}px rgba(239,68,68,0.3);
+          "></div>`,
+          iconSize: [18, 18], iconAnchor: [9, 9]
+        });
+        L.marker([lastPos.lat, lastPos.lon], { icon: vesselIcon }).addTo(attributionMap)
+          .bindPopup(
+            `<b>${r.vessel_name}</b><br>` +
+            `MMSI: ${r.mmsi}<br>` +
+            `Type: ${r.vessel_type}<br>` +
+            `Score: <b style="color:${isTop ? '#ef4444' : '#16a34a'}">${r.score}/100</b><br>` +
+            `Confidence: <b>${r.confidence}</b>`
+          );
+      });
+
+      // Fly map to best-fit bounds of all track points + origin
+      const allPoints = [[CL, CC], ...results.flatMap(r => r.track.map(p => [p.lat, p.lon]))];
+      try { attributionMap.fitBounds(L.latLngBounds(allPoints).pad(0.15)); } catch(e) {}
+
+      setTimeout(() => attributionMap.invalidateSize(), 150);
+    }
+
+    // ─── Modals ───────────────────────────────────────────────────
+    function openDossierModal() {
+      const top = analysisResults[0];
+      if (!top) return;
+
+      document.getElementById('modal-title').textContent = `Incident Dossier — ${top.vessel_name}`;
+      document.getElementById('modal-subtitle').textContent =
+        `MMSI: ${top.mmsi} | Type: ${top.vessel_type} | Rank: #01 | ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+
+      const gaps = top.evidence.ais_gaps;
+      const gapHtml = gaps.length > 0
+        ? gaps.map(g => `<div class="border border-amber-400 bg-amber-50 p-2 rounded">
+            Gap: <b>${g.gap_duration_minutes} min</b> | ${g.gap_start.slice(0, 16).replace('T', ' ')} → ${g.gap_end.slice(0, 16).replace('T', ' ')}
+          </div>`).join('')
+        : '<div class="text-gray-500">No AIS gaps detected.</div>';
+
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="border-2 border-stark p-3 bg-white">
+            <span class="font-bold text-gray-500 uppercase block mb-1">Attribution Score</span>
+            <div class="text-2xl font-syne font-bold text-red-600">${top.score} / 100</div>
+            <div class="text-[11px] text-gray-600 mt-1">Confidence: <b>${top.confidence}</b></div>
+          </div>
+          <div class="border-2 border-stark p-3 bg-white">
+            <span class="font-bold text-gray-500 uppercase block mb-1">Proximity to Origin</span>
+            <div class="text-sm font-bold text-darknavy">${top.evidence.min_distance_from_origin_km} km minimum distance</div>
+            <div class="text-[11px] text-gray-600 mt-1">Time offset: ${top.evidence.time_offset_from_discharge_hours} hrs from discharge</div>
+          </div>
+        </div>
+
+        <div class="border-2 border-stark p-4 bg-white">
+          <h4 class="font-bold text-sm text-stark border-b border-stark pb-2 mb-3">Component Score Breakdown</h4>
+          ${Object.entries(top.component_scores).map(([k, v]) => `
+            <div class="flex justify-between py-1 border-b border-gray-100">
+              <span class="text-gray-600 capitalize">${k}</span>
+              <span class="font-bold">${v}/100</span>
+            </div>`).join('')}
+        </div>
+
+        <div class="border-2 border-stark p-4 bg-white">
+          <h4 class="font-bold text-sm text-stark border-b border-stark pb-2 mb-3">AIS Behaviour Analysis</h4>
+          ${gapHtml}
+        </div>
+
+        <div class="border-2 border-stark p-4 bg-white">
+          <h4 class="font-bold text-sm text-stark border-b border-stark pb-2 mb-3">AIS Track — ${top.track.length} Points</h4>
+          <div class="max-h-40 overflow-y-auto space-y-1">
+            ${top.track.map((p, i) => `
+              <div class="flex justify-between border-b border-gray-100 py-0.5">
+                <span class="text-gray-500">[${i + 1}]</span>
+                <span>Lat: ${p.lat.toFixed(4)}, Lon: ${p.lon.toFixed(4)}</span>
+                <span class="text-gray-400">${new Date(p.time).toISOString().slice(11, 16)} UTC</span>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <div class="border-2 border-stark p-3 bg-cream text-[11px] text-gray-600">
+          <i class="fa-solid fa-circle-info text-skyblue mr-1"></i>
+          This result is an evidence-ranking output and requires human review. Ranking reflects analytical outputs and is not a determination of legal responsibility.
+        </div>
+      `;
+
+      document.getElementById('dossier-modal').style.display = 'flex';
+    }
+
+    function closeDossierModal() {
+      document.getElementById('dossier-modal').style.display = 'none';
+    }
+
+    function openVesselModal(mmsi) {
+      const r = analysisResults.find(v => v.mmsi === mmsi);
+      if (!r) return;
+
+      document.getElementById('vmodal-name').textContent = r.vessel_name;
+
+      const confBg = r.confidence === 'HIGH' ? '#ef4444' : r.confidence === 'MEDIUM' ? '#fbbf24' : '#e5e7eb';
+      const confFg = r.confidence === 'HIGH' ? '#fff' : '#111';
+
+      document.getElementById('vmodal-content').innerHTML = `
+        <div class="grid grid-cols-2 gap-3">
+          <div class="border-2 border-stark p-2 bg-cream">
+            <div class="text-gray-500 uppercase text-[10px]">MMSI</div>
+            <div class="font-bold">${r.mmsi}</div>
+          </div>
+          <div class="border-2 border-stark p-2 bg-cream">
+            <div class="text-gray-500 uppercase text-[10px]">Type</div>
+            <div class="font-bold">${r.vessel_type}</div>
+          </div>
+          <div class="border-2 border-stark p-2 bg-cream">
+            <div class="text-gray-500 uppercase text-[10px]">Rank</div>
+            <div class="font-bold">#${r.rank}</div>
+          </div>
+          <div class="border-2 border-stark p-2 bg-cream">
+            <div class="text-gray-500 uppercase text-[10px]">Confidence</div>
+            <span style="background:${confBg};color:${confFg};padding:1px 6px;border:1px solid #111;font-weight:700;">${r.confidence}</span>
+          </div>
+        </div>
+
+        <div class="border-2 border-stark p-3 bg-white">
+          <div class="text-gray-500 uppercase text-[10px] mb-2">Attribution Score</div>
+          <div class="text-2xl font-syne font-bold">${r.score} / 100</div>
+        </div>
+
+        <div class="border-2 border-stark p-3 bg-white">
+          <div class="text-gray-500 uppercase text-[10px] mb-2">Evidence</div>
+          <div class="flex justify-between border-b border-gray-100 py-1"><span>Min. Distance from Origin</span><span class="font-bold">${r.evidence.min_distance_from_origin_km} km</span></div>
+          <div class="flex justify-between border-b border-gray-100 py-1"><span>Time Offset</span><span class="font-bold">${r.evidence.time_offset_from_discharge_hours} hrs</span></div>
+          <div class="flex justify-between border-b border-gray-100 py-1"><span>Drift Proximity</span><span class="font-bold">${r.evidence.drift_min_dist} km</span></div>
+          <div class="flex justify-between py-1"><span>AIS Gaps</span><span class="font-bold ${r.evidence.ais_gaps.length > 0 ? 'text-amber-600' : 'text-emerald-600'}">${r.evidence.ais_gaps.length > 0 ? r.evidence.ais_gaps.length + ' gap(s)' : 'None'}</span></div>
+        </div>
+
+        <div class="border-2 border-stark p-3 bg-white">
+          <div class="text-gray-500 uppercase text-[10px] mb-2">Component Scores</div>
+          ${Object.entries(r.component_scores).map(([k, v]) => `
+            <div class="flex justify-between border-b border-gray-100 py-1 capitalize">
+              <span>${k}</span>
+              <span class="font-bold">${v}/100</span>
+            </div>`).join('')}
+        </div>
+      `;
+
+      document.getElementById('vessel-modal').style.display = 'flex';
+    }
+
+    function closeVesselModal() {
+      document.getElementById('vessel-modal').style.display = 'none';
+    }
+
+    // Close modals on backdrop click
+    document.getElementById('dossier-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeDossierModal();
+    });
+    document.getElementById('vessel-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeVesselModal();
+    });
+
+  </script>
+
+</body>
+
+</html>

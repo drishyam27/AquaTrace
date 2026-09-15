@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AquaTrace | Satellite Oil Spill Detection &amp; AIS Vessel Correlation Engine</title>
+  <meta name="description" content="AquaTrace uses Sentinel-1 SAR satellite imagery to detect marine oil slicks and correlates them with AIS vessel trajectories to identify investigation candidates.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:    '#F6F4EE',
+            stark:    '#111111',
+            darknavy: '#0F2537',
+            skyblue:  '#00A8E8',
+            sand:     '#D4A373',
+            slatebody:'#2B2D42'
+          },
+          fontFamily: {
+            syne:  ['Syne', 'sans-serif'],
+            serif: ['Instrument Serif', 'serif'],
+            mono:  ['Space Mono', 'monospace'],
+            body:  ['Plus Jakarta Sans', 'sans-serif']
+          },
+          boxShadow: {
+            brutal:       '4px 4px 0px #111111',
+            'brutal-lg':  '6px 6px 0px #111111',
+            'brutal-blue':'4px 4px 0px #00A8E8'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- AquaTrace CSS -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/map.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body class="min-h-screen flex flex-col">
+
+  <!-- =====================================================
+       HEADER — Navigation
+       ===================================================== -->
+  <header class="border-b-2 border-stark bg-cream sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+
+      <!-- Logo & Project Identity -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-darknavy border-2 border-stark flex items-center justify-center text-skyblue shadow-brutal shrink-0">
+          <i class="fa-solid fa-satellite-dish text-base sm:text-lg"></i>
+        </div>
+        <div>
+          <span class="aq-logo-text font-syne font-extrabold text-xl sm:text-2xl tracking-tight text-stark block leading-none">
+            Aqua<span class="text-skyblue">Trace</span>
+          </span>
+          <span class="aq-logo-sub font-mono text-[9px] sm:text-[10px] text-gray-600 tracking-wider uppercase block mt-0.5">
+            SIH26143 • SAR + AIS TRACKER
+          </span>
+        </div>
+      </div>
+
+      <!-- System Status & Dashboard Dropdown -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <div class="hidden sm:flex items-center space-x-2 border-2 border-stark bg-white px-3 py-1.5 font-mono text-xs shadow-brutal">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="font-bold text-darknavy">SENTINEL-1 ONLINE</span>
+        </div>
+
+        <!-- Dashboard Dropdown Menu -->
+        <div class="relative group">
+          <button class="aq-dashboard-btn bg-skyblue text-stark px-2 sm:px-4 py-2 font-mono text-xs font-bold uppercase border-2 border-stark shadow-brutal flex items-center gap-2 cursor-pointer transition-colors hover:bg-white hover:text-skyblue">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span class="hidden xs:inline sm:inline">Dashboard</span>
+            <i class="fa-solid fa-caret-down"></i>
+          </button>
+          <div class="absolute right-0 top-full pt-2 w-64 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 delay-500 group-hover:delay-0 z-50">
+            <div class="bg-cream border-2 border-stark shadow-brutal">
+              <a href="../live_track_ship/public/index.html" class="block px-4 py-3 font-mono text-xs font-bold text-stark hover:bg-skyblue hover:text-stark border-b-2 border-stark transition-colors">
+                Live AIS Tracker
+              </a>
+              <a href="../aquatrace_ais/project_info/ais-attribution.html" class="block px-4 py-3 font-mono text-xs font-bold text-stark hover:bg-skyblue hover:text-stark transition-colors">
+                Who Discharged
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- =====================================================
+       HERO — Editorial headline & metric stats
+       ===================================================== -->
+  <section class="border-b-2 border-stark bg-cream pt-10 pb-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+
+      <!-- Sub-tagline -->
+      <div class="aq-hero-tagline flex items-center space-x-2 font-mono text-[10px] sm:text-xs uppercase text-darknavy font-bold mb-3">
+        <span class="bg-darknavy text-skyblue px-2 py-0.5 shrink-0">HIGH-CONFIDENCE ALGORITHM</span>
+        <span class="hidden sm:inline">— SATELLITE RADAR MULTI-TEMPORAL ANALYSIS</span>
+      </div>
+
+      <!-- Editorial Title -->
+      <h1 class="font-syne font-extrabold text-3xl sm:text-6xl lg:text-7xl leading-tight sm:leading-none text-stark tracking-tight">
+        THE OCEAN IS <span class="font-serif italic font-normal text-darknavy underline decoration-skyblue decoration-4">WATCHING.</span>
+      </h1>
+
+      <p class="mt-4 font-body text-base sm:text-lg text-slatebody max-w-3xl leading-relaxed">
+        Leveraging Sentinel-1 Synthetic Aperture Radar (SAR) imagery to automatically detect marine oil slicks, combined with spatio-temporal AIS trajectory tracking to surface ranked investigation candidates for review.
+      </p>
+
+      <!-- Metric Cards -->
+      <div class="aq-metric-grid grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-8">
+
+        <div class="aq-metric-card">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Active Slick Plumes</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1">07</div>
+          <div class="font-mono text-[11px] text-emerald-600 mt-1"><i class="fa-solid fa-arrow-up"></i> 2 new in Red Sea</div>
+        </div>
+
+        <div class="aq-metric-card">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Monitored Area</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-darknavy mt-1">1,450<span class="text-lg text-skyblue font-mono">km²</span></div>
+          <div class="font-mono text-[11px] text-gray-600 mt-1">24/7 Radar Surveillance</div>
+        </div>
+
+        <div class="aq-metric-card">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Correlated Vessels</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-skyblue mt-1">32+</div>
+          <div class="font-mono text-[11px] text-gray-600 mt-1">AIS Trajectory Matched</div>
+        </div>
+
+        <div class="aq-metric-card">
+          <div class="font-mono text-xs font-bold text-gray-500 uppercase">Attribution Confidence</div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1">99.8<span class="text-lg font-mono">%</span></div>
+          <div class="font-mono text-[11px] text-emerald-600 mt-1">Validated by ML Engine</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================
+       MARQUEE TICKER RIBBON
+       ===================================================== -->
+  <div class="bg-stark text-cream border-b-2 border-stark overflow-hidden py-2.5 font-mono text-xs uppercase font-bold tracking-wider">
+    <div class="animate-marquee whitespace-nowrap">
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SATELLITE SAR PASS COMPLETE: PERSIA GULF 04:32 UTC</span>
+      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> HIGH PROBABILITY SPILL DETECTED (LAT 14.3 N, LONG 42.1 E)</span>
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> AIS TRAJECTORY CORRELATION MATCH: MV SEAMARINER (IMO 9876543)</span>
+      <span class="mx-6"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i> DEMO ALERT SIMULATED — INVESTIGATOR REVIEW QUEUED</span>
+      <!-- Duplicate spans for seamless loop -->
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SATELLITE SAR PASS COMPLETE: PERSIA GULF 04:32 UTC</span>
+      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> HIGH PROBABILITY SPILL DETECTED (LAT 14.3 N, LONG 42.1 E)</span>
+    </div>
+  </div>
+
+
+  <!-- =====================================================
+       MAIN WORKSPACE
+       ===================================================== -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 flex-grow w-full">
+
+    <!-- ---- Map + Candidate Panel ---- -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <!-- MAP CONTAINER -->
+      <div class="lg:col-span-2 flex flex-col">
+        <div class="aq-map-wrapper">
+
+          <!-- Map Header Bar -->
+          <div class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
+            <div class="flex items-center space-x-2">
+              <span class="w-3 h-3 bg-skyblue inline-block border border-white"></span>
+              <span class="font-bold tracking-wider">LIVE SATELLITE RADAR &amp; AIS MAP</span>
+            </div>
+            <button id="btn-fullscreen-map" class="border border-cream/40 px-2 py-1 hover:bg-skyblue hover:text-stark hover:border-stark transition-colors" title="Expand full view">
+              <i class="fa-solid fa-expand"></i>
+            </button>
+          </div>
+
+          <!-- Leaflet Map -->
+          <div id="map" class="flex-grow w-full h-full"></div>
+
+          <!-- Map Footer Legend -->
+          <div class="border-t-2 border-stark bg-cream px-4 py-2 flex items-center justify-between font-mono text-xs text-stark">
+            <div class="font-bold flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> SAR + AIS LAYERS SYNCED
+            </div>
+          </div>
+
+        </div>
+
+        <button id="btn-live-ais-radar" class="w-full mt-1 bg-skyblue text-stark border-2 border-stark shadow-brutal font-mono text-xs font-bold uppercase tracking-wider py-2 flex items-center justify-center gap-2 hover:bg-sky-400 transition-all">
+          <i class="fa-solid fa-satellite-dish"></i> Live AIS Radar
+        </button>
+      </div>
+
+
+      <!-- RIGHT PANEL: Candidate + Alert Feed -->
+      <div class="space-y-6">
+
+        <!-- HIGHEST-RANKED CANDIDATE CARD -->
+        <div class="border-2 border-stark bg-white p-5 shadow-brutal">
+          <div class="flex items-center justify-between border-b-2 border-stark pb-3 mb-4">
+            <span class="font-mono text-xs font-bold uppercase text-gray-500">Highest-Ranked Candidate</span>
+            <span class="bg-red-500 text-white font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">Attribution Confidence 94%</span>
+          </div>
+
+          <div class="flex items-start space-x-4">
+            <div class="w-16 h-16 bg-darknavy border-2 border-stark flex items-center justify-center text-cream shrink-0">
+              <i class="fa-solid fa-ship text-2xl text-skyblue"></i>
+            </div>
+            <div>
+              <h3 class="font-syne font-bold text-xl text-stark leading-tight">MV SEAMARINER</h3>
+              <div class="font-mono text-xs text-slatebody mt-1">IMO: 9876543 | Flag: Liberia</div>
+              <div class="font-mono text-xs text-darknavy mt-0.5">Type: Crude Oil Tanker</div>
+            </div>
+          </div>
+
+          <div class="mt-4 space-y-2 border-t-2 border-stark pt-3 font-mono text-xs">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Slick Origin Time:</span>
+              <span class="font-bold">04:32 UTC</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">AIS Vessel Proximity:</span>
+              <span class="font-bold text-emerald-600">0.4 Nautical Miles</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Estimated Spill Extent:</span>
+              <span class="font-bold">14.5 sq. km</span>
+            </div>
+          </div>
+
+          <button id="btn-open-dossier" class="w-full mt-4 bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-2.5 shadow-brutal hover:bg-sky-400 transition-all">
+            <i class="fa-solid fa-file-pdf mr-1.5"></i> View Full Incident Dossier
+          </button>
+        </div>
+
+
+        <!-- INCIDENT ALERT STREAM -->
+        <div class="border-2 border-stark bg-white p-5 shadow-brutal">
+          <div class="font-mono text-xs font-bold uppercase text-stark border-b-2 border-stark pb-2 mb-3 flex items-center justify-between">
+            <span><i class="fa-solid fa-bell text-amber-500 mr-1.5"></i> Incident Alert Stream</span>
+            <span class="text-[10px] text-gray-500">REALTIME</span>
+          </div>
+          <div id="alert-stream-container" class="space-y-3 font-mono text-xs max-h-[220px] overflow-y-auto pr-1">
+            <!-- Populated by dashboard.js -->
+          </div>
+        </div>
+
+      </div>
+    </div><!-- end Map + Candidate grid -->
+
+
+    <!-- ---- VESSEL TRAJECTORY CORRELATION MATRIX ---- -->
+    <section class="border-2 border-stark bg-white shadow-brutal p-3 sm:p-6 mt-8">
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 mb-4 border-b-2 border-stark gap-4">
+        <div>
+          <h2 class="font-syne font-bold text-2xl text-stark">Vessel Trajectory Correlation Matrix</h2>
+          <p class="font-mono text-xs text-gray-600 mt-0.5">Spatio-temporal alignment between oil slick drift models and AIS historical coordinates.</p>
+        </div>
+        <div class="aq-search-row w-full sm:w-auto">
+          <input type="text" id="vessel-search" placeholder="Search IMO / Vessel..." class="border-2 border-stark px-3 py-1.5 font-mono text-xs bg-cream focus:outline-none focus:bg-white w-full sm:w-48">
+          <button class="bg-stark text-cream px-3 py-1.5 font-mono text-xs font-bold border-2 border-stark shrink-0"><i class="fa-solid fa-filter"></i></button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="aq-vessel-table">
+          <thead>
+            <tr>
+              <th class="p-3 border-r border-stark">RANK</th>
+              <th class="p-3 border-r border-stark">VESSEL NAME</th>
+              <th class="p-3 border-r border-stark">IMO / MMSI</th>
+              <th class="p-3 border-r border-stark">FLAG</th>
+              <th class="p-3 border-r border-stark">LAST AIS POS</th>
+              <th class="p-3 border-r border-stark">SPEED (KTS)</th>
+              <th class="p-3 border-r border-stark">ATTRIBUTION CONFIDENCE</th>
+              <th class="p-3">ACTION</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-3 font-bold" data-label="Rank">#01</td>
+              <td class="p-3 font-bold text-darknavy" data-label="Vessel">MV SEAMARINER</td>
+              <td class="p-3" data-label="IMO/MMSI">9876543 / 211345000</td>
+              <td class="p-3" data-label="Flag">Liberia 🇱🇷</td>
+              <td class="p-3" data-label="Last AIS Pos">14.3° N, 42.1° E</td>
+              <td class="p-3" data-label="Speed (kts)">12.4</td>
+              <td class="p-3" data-label="Confidence">
+                <span class="bg-red-500 text-white font-bold px-2 py-0.5 border border-stark font-mono text-xs">94% HIGH</span>
+              </td>
+              <td class="p-3" data-label="Action">
+                <button id="btn-details-1" class="bg-skyblue text-stark px-2.5 py-1 border border-stark font-bold hover:bg-sky-300 font-mono text-xs">DETAILS</button>
+              </td>
+            </tr>
+            <tr>
+              <td class="p-3 font-bold" data-label="Rank">#02</td>
+              <td class="p-3 font-bold text-darknavy" data-label="Vessel">MT ORION PACIFIC</td>
+              <td class="p-3" data-label="IMO/MMSI">9123456 / 355987000</td>
+              <td class="p-3" data-label="Flag">Panama 🇵🇦</td>
+              <td class="p-3" data-label="Last AIS Pos">14.8° N, 42.0° E</td>
+              <td class="p-3" data-label="Speed (kts)">14.1</td>
+              <td class="p-3" data-label="Confidence">
+                <span class="bg-amber-400 text-stark font-bold px-2 py-0.5 border border-stark font-mono text-xs">68% MED</span>
+              </td>
+              <td class="p-3" data-label="Action">
+                <button id="btn-details-2" class="bg-cream text-stark px-2.5 py-1 border border-stark font-bold hover:bg-gray-200 font-mono text-xs">DETAILS</button>
+              </td>
+            </tr>
+            <tr>
+              <td class="p-3 font-bold" data-label="Rank">#03</td>
+              <td class="p-3 font-bold text-darknavy" data-label="Vessel">MV SADARINAN</td>
+              <td class="p-3" data-label="IMO/MMSI">9456789 / 538001122</td>
+              <td class="p-3" data-label="Flag">Marshall Is. 🇲🇭</td>
+              <td class="p-3" data-label="Last AIS Pos">14.3° N, 42.0° E</td>
+              <td class="p-3" data-label="Speed (kts)">08.2</td>
+              <td class="p-3" data-label="Confidence">
+                <span class="bg-gray-200 text-stark font-bold px-2 py-0.5 border border-stark font-mono text-xs">53% LOW</span>
+              </td>
+              <td class="p-3" data-label="Action">
+                <button id="btn-details-3" class="bg-cream text-stark px-2.5 py-1 border border-stark font-bold hover:bg-gray-200 font-mono text-xs">DETAILS</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+
+    <!-- ---- LATEST OIL SPILL REPORT ---- -->
+    <section class="border-2 border-stark bg-white shadow-brutal p-3 sm:p-6 mt-8">
+
+      <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 mb-4 border-b-2 border-stark gap-4">
+        <div>
+          <h2 class="font-syne font-bold text-2xl text-stark">Latest Oil Spill Report</h2>
+          <p class="font-mono text-xs text-gray-600 mt-0.5">Latest confirmed spill events recorded by satellite telemetry.</p>
+        </div>
+        <span id="news-status-badge" class="bg-emerald-900 text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase w-fit">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#34d399;margin-right:4px;"></span> SYSTEM LOG
+        </span>
+      </div>
+
+      <!-- News / incident cards — populated by news.js on load -->
+      <div id="news-incidents-container" class="space-y-4">
+
+        <!-- Static fallback cards — shown while live feed loads -->
+
+        <!-- Record 1 -->
+        <div style="border:2px solid #111111;background:#ffffff;">
+          <div class="aq-incident-grid">
+            <div class="aq-incident-id-col" style="background:#0F2537;color:#F6F4EE;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid #111;">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;color:#00A8E8;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:4px;">
+                  <i class="fa-solid fa-satellite" style="font-size:9px;"></i> Report ID
+                </div>
+                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-top:4px;">#OS-260901</div>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:11px;color:#cbd5e1;margin-top:12px;">Automated Detection</div>
+            </div>
+            <div class="aq-incident-area-col" style="border-bottom:2px solid #111;padding:12px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Est. Slick Area</div>
+              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:#111111;margin-top:4px;">2.19 km²</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:4px;">SAR Model Est.</div>
+            </div>
+            <div class="aq-incident-conf-col" style="border-bottom:2px solid #111;padding:12px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Detection Confidence</div>
+              <div style="margin-top:6px;">
+                <span style="background:#ef4444;color:#ffffff;font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:2px 8px;border:1px solid #111111;">High</span>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;">Gulf of America</div>
+            </div>
+            <div style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Satellite Telemetry</div>
+              <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:#2B2D42;margin-top:4px;line-height:1.6;flex-grow:1;">
+                <strong>Sensor:</strong> Sentinel-2C<br>
+                <strong>Image Date:</strong> 8 Sep 2026
+              </p>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;">
+                <i class="fa-regular fa-clock" style="margin-right:4px;"></i>Reported: 9 Sep 2026
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:2px solid #111111;"></div>
+
+        <!-- Record 2 -->
+        <div style="border:2px solid #111111;background:#ffffff;">
+          <div class="aq-incident-grid">
+            <div class="aq-incident-id-col" style="background:#0F2537;color:#F6F4EE;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid #111;">
+              <div>
+                <div style="font-family:'Space Mono',monospace;font-size:10px;color:#00A8E8;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:4px;">
+                  <i class="fa-solid fa-satellite" style="font-size:9px;"></i> Report ID
+                </div>
+                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-top:4px;">#OS-260902</div>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:11px;color:#cbd5e1;margin-top:12px;">Automated Detection</div>
+            </div>
+            <div class="aq-incident-area-col" style="border-bottom:2px solid #111;padding:12px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Est. Slick Area</div>
+              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:#111111;margin-top:4px;">0.33 km²</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:4px;">SAR Model Est.</div>
+            </div>
+            <div class="aq-incident-conf-col" style="border-bottom:2px solid #111;padding:12px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Detection Confidence</div>
+              <div style="margin-top:6px;">
+                <span style="background:#fbbf24;color:#111111;font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:2px 8px;border:1px solid #111111;">Medium-High</span>
+              </div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;">Gulf of America</div>
+            </div>
+            <div style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;">
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Satellite Telemetry</div>
+              <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:#2B2D42;margin-top:4px;line-height:1.6;flex-grow:1;">
+                <strong>Sensor:</strong> Landsat 8<br>
+                <strong>Image Date:</strong> 8 Sep 2026
+              </p>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;">
+                <i class="fa-regular fa-clock" style="margin-right:4px;"></i>Reported: 8 Sep 2026
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- #news-incidents-container -->
+
+      <div class="mt-4 border-2 border-stark p-3 bg-cream font-mono text-[11px] text-gray-600">
+        <i class="fa-solid fa-circle-info text-skyblue mr-1"></i>
+        Click on any Incident ID to open the latest news coverage for that event. Data sourced via Google News RSS.
+      </div>
+
+    </section>
+
+  </main><!-- /main -->
+
+
+  <!-- =====================================================
+       FOOTER
+       ===================================================== -->
+  <footer class="border-t-2 border-stark bg-stark text-cream py-8 px-4 sm:px-6 lg:px-8 mt-12">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs">
+      <div>
+        <span class="font-syne font-bold text-lg text-white">AquaTrace</span>
+        <span class="text-gray-400 ml-2">| SIH26143 Satellite &amp; AIS Correlation System</span>
+      </div>
+      <div class="text-gray-400">Built with Cream, Stark Black, Dark Navy &amp; Sky Blue Architecture</div>
+    </div>
+    <div class="max-w-7xl mx-auto mt-4 pt-4 border-t border-gray-700 font-mono text-[10px] text-gray-500">
+      Prototype / demonstration interface. Candidate rankings are analytical outputs and not legal determinations.
+    </div>
+  </footer>
+
+
+  <!-- =====================================================
+       MODAL: INCIDENT ANALYSIS DOSSIER
+       Note: Uses style.display toggle (not Tailwind 'hidden') so that
+       display:flex layout works correctly — known Tailwind CDN JIT limitation.
+       ===================================================== -->
+  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(17,17,17,0.82);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;padding:1rem;">
+    <div class="aq-modal-inner">
+
+      <div class="flex justify-between items-start border-b-2 border-stark pb-4 mb-4">
+        <div>
+          <span class="bg-darknavy text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">DEMO DOSSIER</span>
+          <h2 class="font-syne font-extrabold text-2xl text-stark mt-1">Incident Analysis Report #1734A</h2>
+          <p class="font-mono text-xs text-gray-600">Location: Red Sea Transit Corridor | Date: March 15, 2026</p>
+        </div>
+        <button id="btn-close-modal" class="w-8 h-8 bg-stark text-cream font-bold border-2 border-stark hover:bg-red-600">✕</button>
+      </div>
+
+      <div class="space-y-4 font-mono text-xs">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="border-2 border-stark p-3 bg-white">
+            <span class="font-bold text-gray-500 uppercase block mb-1">SAR Radar Extent</span>
+            <div class="text-sm font-bold text-darknavy">14.5 sq. km Slick Plume</div>
+            <div class="text-[11px] text-gray-600 mt-1">Pass Acquisition Time: 04:32 UTC</div>
+          </div>
+          <div class="border-2 border-stark p-3 bg-white">
+            <span class="font-bold text-gray-500 uppercase block mb-1">Highest-Ranked Candidate Vessel</span>
+            <div class="text-sm font-bold text-red-600">MV SEAMARINER (94% Confidence)</div>
+            <div class="text-[11px] text-gray-600 mt-1">IMO: 9876543 | Flag: Liberia</div>
+          </div>
+        </div>
+
+        <div class="border-2 border-stark p-4 bg-white">
+          <h4 class="font-bold text-sm text-stark border-b border-stark pb-2 mb-2">AIS Trajectory Analysis Log</h4>
+          <p class="text-slatebody leading-relaxed">
+            Spatio-temporal back-projection places MV SEAMARINER near the apex origin of the radar slick outline at 03:45 UTC, traveling at 12.4 knots. Wind drift models align 98% with the observed surface oil spread angle.
+          </p>
+        </div>
+
+        <div class="border-2 border-stark p-3 bg-cream text-[11px] text-gray-600">
+          This result is an evidence-ranking output and requires human review. Ranking reflects available evidence and is not a determination of legal responsibility.
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2 font-mono text-xs font-bold">
+        <button id="btn-close-modal-footer" class="px-4 py-2 border-2 border-stark bg-white text-stark w-full sm:w-auto">Close Window</button>
+        <button id="btn-export-dossier" class="px-4 py-2 border-2 border-stark bg-skyblue text-stark shadow-brutal w-full sm:w-auto">
+          <i class="fa-solid fa-download mr-1"></i> Export Dossier (Demo)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- =====================================================
+       FULLSCREEN MAP OVERLAY
+       ===================================================== -->
+  <div id="fullscreen-map-overlay">
+    <div class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
+      <div class="flex items-center space-x-2">
+        <span class="w-3 h-3 bg-skyblue inline-block border border-white"></span>
+        <span class="font-bold tracking-wider">LIVE SATELLITE RADAR &amp; AIS MAP — FULL VIEW</span>
+      </div>
+      <button id="btn-close-fullscreen" class="border border-cream/40 px-2 py-1 hover:bg-skyblue hover:text-stark hover:border-stark transition-colors" title="Close full view">
+        <i class="fa-solid fa-compress mr-1"></i> Close
+      </button>
+    </div>
+    <div id="map-full" class="flex-grow w-full h-full"></div>
+    <div class="border-t-2 border-stark bg-cream px-4 py-2 flex items-center justify-between font-mono text-xs text-stark">
+      <div class="font-bold">Coordinates: 14.300° N, 42.180° E</div>
+      <div class="text-gray-500 uppercase">DEMO DATA — LIVE AIS FEED NOT YET CONNECTED</div>
+    </div>
+  </div>
+
+
+  <!-- =====================================================
+       SCRIPTS — Load order matters:
+       config → utils → api → map → modals → dashboard → news → attribution → app
+       ===================================================== -->
+  <!-- Leaflet JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <!-- AquaTrace modules -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/news.js"></script>
+  <script src="js/attribution.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Wire modal buttons (requires modals.js to be loaded) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btn-open-dossier')?.addEventListener('click', openModal);
+      document.getElementById('btn-details-1')?.addEventListener('click', openModal);
+      document.getElementById('btn-details-2')?.addEventListener('click', openModal);
+      document.getElementById('btn-details-3')?.addEventListener('click', openModal);
+      document.getElementById('btn-close-modal')?.addEventListener('click', closeModal);
+      document.getElementById('btn-close-modal-footer')?.addEventListener('click', closeModal);
+      document.getElementById('btn-export-dossier')?.addEventListener('click', () => {
+        alert('DEMO ACTION: Exporting dossier as PDF (prototype only, no real transmission).');
+      });
+    });
+  </script>
+
+</body>
+</html>

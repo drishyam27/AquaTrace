@@ -1,0 +1,63 @@
+/* ============================================================
+   AquaTrace — Main CSS
+   Base tokens, body defaults, and custom scrollbar styles.
+   All design tokens are defined here as CSS variables.
+   ============================================================ */
+
+:root {
+  /* Color palette */
+  --color-cream:    #F6F4EE;
+  --color-stark:    #111111;
+  --color-darknavy: #0F2537;
+  --color-skyblue:  #00A8E8;
+  --color-sand:     #D4A373;
+  --color-slate:    #2B2D42;
+
+  /* Shadows */
+  --shadow-brutal:    4px 4px 0px var(--color-stark);
+  --shadow-brutal-lg: 6px 6px 0px var(--color-stark);
+  --shadow-brutal-blue: 4px 4px 0px var(--color-skyblue);
+
+  /* Typography */
+  --font-body:  'Plus Jakarta Sans', sans-serif;
+  --font-syne:  'Syne', sans-serif;
+  --font-serif: 'Instrument Serif', serif;
+  --font-mono:  'Space Mono', monospace;
+}
+
+/* ---- Reset ---- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* ---- Base ---- */
+body {
+  background-color: var(--color-cream);
+  color: var(--color-stark);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+main {
+  overflow-x: hidden;
+}
+
+/* ---- Text selection ---- */
+::selection {
+  background-color: var(--color-skyblue);
+  color: var(--color-stark);
+}
+
+/* ---- Custom scrollbar ---- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream);
+  border-left: 2px solid var(--color-stark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-darknavy);
+  border: 1px solid var(--color-stark);
+}

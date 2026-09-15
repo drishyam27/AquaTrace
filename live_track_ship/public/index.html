@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ShipTrack — Live AIS Vessel Tracker</title>
+
+<!-- MapLibre GL JS -->
+<link href="https://unpkg.com/maplibre-gl@4.7.0/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.7.0/dist/maplibre-gl.js"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-glass: rgba(10, 14, 22, 0.82);
+    --bg-glass-light: rgba(10, 14, 22, 0.65);
+    --border: rgba(255,255,255,0.08);
+    --border-active: rgba(99,179,237,0.5);
+    --text-primary: #f0f4f8;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #3b9eff;
+    --accent-dim: rgba(59,158,255,0.15);
+    --live-green: #22c55e;
+    --warn-amber: #f59e0b;
+    --danger-red: #ef4444;
+    --rail-w: 56px;
+    --toolbar-w: 48px;
+    --panel-w: 380px;
+    --search-w: 440px;
+    --blur: blur(12px);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+
+  html, body { height: 100%; overflow: hidden; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #0a0e16; color: var(--text-primary); }
+
+  /* ── Map ─────────────────────────────────── */
+  #map { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+
+  /* ── Left Rail ───────────────────────────── */
+  #left-rail {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--rail-w);
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 4px;
+    z-index: 100;
+  }
+
+  .rail-logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+
+  .rail-divider { width: 28px; height: 1px; background: var(--border); margin: 6px 0; }
+
+  .rail-btn {
+    width: 40px; height: 40px;
+    border: none; background: transparent; cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    font-size: 18px;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+
+  .rail-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+  .rail-btn.active { background: var(--accent-dim); color: var(--accent); }
+
+  .rail-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%; transform: translateY(-50%);
+    background: rgba(0,0,0,0.9);
+    color: var(--text-primary);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 200;
+  }
+
+  /* ── Top Search ──────────────────────────── */
+  #top-search {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: var(--search-w);
+    z-index: 100;
+  }
+
+  #search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  #search-input-wrap .search-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    font-size: 16px;
+    pointer-events: none;
+  }
+
+  #search-input {
+    width: 100%;
+    height: 44px;
+    padding: 0 40px 0 42px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-shadow: var(--shadow);
+  }
+
+  #search-input::placeholder { color: var(--text-muted); }
+  #search-input:focus { border-color: var(--border-active); }
+
+  #search-clear {
+    position: absolute;
+    right: 12px;
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px;
+    display: none;
+    padding: 4px;
+    border-radius: 50%;
+  }
+
+  #search-results {
+    margin-top: 6px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: none;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .search-result-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    transition: background 0.12s;
+  }
+
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: rgba(255,255,255,0.06); }
+
+  .result-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  .result-info { flex: 1; min-width: 0; }
+  .result-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ── Right Toolbar ───────────────────────── */
+  #right-toolbar {
+    position: fixed;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 100;
+  }
+
+  .tool-btn {
+    width: 40px; height: 40px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    font-size: 16px;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    box-shadow: var(--shadow);
+  }
+
+  .tool-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); border-color: var(--border-active); }
+  .tool-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--border-active); }
+
+  /* ── Zoom Controls ───────────────────────── */
+  #zoom-controls {
+    position: fixed;
+    bottom: 100px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    box-shadow: var(--shadow);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .zoom-btn {
+    width: 40px; height: 40px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: none; border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary);
+    font-size: 20px;
+    font-weight: 300;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .zoom-btn:last-child { border-bottom: none; }
+  .zoom-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+  /* ── Status Indicator ────────────────────── */
+  #status-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 72px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--live-green);
+    animation: pulse-live 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .status-dot.warn { background: var(--warn-amber); animation: none; }
+  .status-dot.offline { background: var(--danger-red); animation: none; }
+
+  @keyframes pulse-live {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+  }
+
+  .status-label { font-weight: 600; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .status-label.live { color: var(--live-green); }
+  .status-label.warn { color: var(--warn-amber); }
+  .status-label.offline { color: var(--danger-red); }
+
+  .status-sep { color: var(--text-muted); }
+
+  /* ── Vessel Detail Panel ─────────────────── */
+  #vessel-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: var(--panel-w);
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border-left: 1px solid var(--border);
+    z-index: 110;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -8px 0 40px rgba(0,0,0,0.4);
+  }
+
+  #vessel-panel.open { transform: translateX(0); }
+
+  .panel-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-close {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 20px;
+    border-radius: 6px;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .panel-close:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
+  .vessel-hero {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .vessel-icon-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+
+  .vessel-ship-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .vessel-name { font-size: 20px; font-weight: 600; line-height: 1.2; }
+  .vessel-type-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .quality-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  .quality-LIVE { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .quality-RECENT { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .quality-STALE { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .quality-OFFLINE { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+  /* Panel Tabs */
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  .panel-tab {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .panel-tab:hover { color: var(--text-primary); }
+  .panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .panel-section {
+    margin-bottom: 20px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    gap: 12px;
+  }
+
+  .data-key { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+  .data-val { font-size: 13px; color: var(--text-primary); font-weight: 500; text-align: right; }
+  .data-val.mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+
+  /* ── Filters Panel ───────────────────────── */
+  #filter-panel {
+    position: fixed;
+    top: 72px;
+    left: 72px;
+    width: 260px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    z-index: 100;
+    box-shadow: var(--shadow);
+    display: none;
+    padding: 16px;
+  }
+
+  #filter-panel h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .filter-group { margin-bottom: 16px; }
+  .filter-group-label { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+
+  .filter-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .filter-chip {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .filter-chip.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--border-active);
+  }
+
+  .filter-chip:hover { border-color: rgba(255,255,255,0.2); color: var(--text-primary); }
+
+  .filter-slider-row { display: flex; align-items: center; gap: 10px; }
+  .filter-slider { flex: 1; accent-color: var(--accent); }
+  .filter-slider-val { font-size: 11px; color: var(--text-secondary); min-width: 40px; text-align: right; }
+
+  /* ── Map Type Panel ──────────────────────── */
+  #map-type-panel {
+    position: fixed;
+    top: 50%;
+    right: 64px;
+    transform: translateY(-50%);
+    width: 220px;
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    z-index: 110;
+    box-shadow: var(--shadow);
+    display: none;
+    flex-direction: column;
+  }
+  
+  .map-type-options {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .map-type-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  
+  .map-type-label input[type="radio"] {
+    display: none;
+  }
+  
+  .map-type-label .radio-custom {
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--text-muted);
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    transition: all 0.2s;
+  }
+  
+  .map-type-label input[type="radio"]:checked + .radio-custom {
+    border-color: var(--accent);
+  }
+  
+  .map-type-label input[type="radio"]:checked + .radio-custom::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── Raw JSON viewer ─────────────────────── */
+  .raw-json {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 10px;
+    color: #a8c5da;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  /* ── Loading overlay ─────────────────────── */
+  #loading-overlay {
+    position: fixed; inset: 0;
+    background: #0a0e16;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px;
+    z-index: 999;
+    transition: opacity 0.5s;
+  }
+
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+
+  .loading-ship { font-size: 48px; animation: sail 2s ease-in-out infinite; }
+
+  @keyframes sail {
+    0%, 100% { transform: translateY(0) rotate(-2deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+  }
+
+  .loading-text { font-size: 14px; color: var(--text-muted); }
+  .loading-title { font-size: 22px; font-weight: 600; color: var(--text-primary); }
+
+  .maplibregl-popup-content {
+    background: var(--bg-glass) !important;
+    backdrop-filter: var(--blur) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    color: var(--text-primary) !important;
+    padding: 12px !important;
+    box-shadow: var(--shadow) !important;
+    font-family: inherit !important;
+    font-size: 12px !important;
+    min-width: 180px;
+  }
+
+  .maplibregl-popup-tip { border-top-color: var(--bg-glass) !important; }
+
+  .popup-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .popup-mmsi { color: var(--text-muted); font-size: 11px; }
+  .popup-speed { color: var(--accent); font-size: 11px; margin-top: 4px; }
+
+  /* ── Scale / compass ─────────────────────── */
+  .maplibregl-ctrl-scale {
+    background: var(--bg-glass) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
+    font-size: 10px !important;
+  }
+
+  /* Scrollbars */
+  #search-results::-webkit-scrollbar { width: 4px; }
+  #search-results::-webkit-scrollbar-track { background: transparent; }
+  #search-results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    #map-type-panel { right: 56px; }
+    :root {
+      --panel-w: 100vw;
+      --search-w: calc(100vw - 100px);
+    }
+
+    #left-rail { display: none; }
+    #right-toolbar { right: 8px; }
+    #zoom-controls { right: 8px; }
+    #top-search { left: 8px; right: 8px; transform: none; width: auto; }
+    #status-bar { left: 8px; }
+    #vessel-panel { top: auto; height: 80vh; }
+    #vessel-panel.open { transform: translateX(0) translateY(0); }
+  }
+
+  /* Tab content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="loading-ship">🚢</div>
+  <div class="loading-title">ShipTrack</div>
+  <div class="loading-text">Loading live AIS data...</div>
+</div>
+
+<!-- Map container -->
+<div id="map"></div>
+
+<!-- Left Navigation Rail -->
+<nav id="left-rail">
+  <div class="rail-logo">⚓</div>
+  <div class="rail-divider"></div>
+  <button class="rail-btn active" title="Live Map" onclick="setRailActive(this)">🗺</button>
+  <button class="rail-btn" title="Filters" onclick="toggleFilters(); setRailActive(this)">⚙️</button>
+  <button class="rail-btn" title="Vessels" onclick="setRailActive(this)">🚢</button>
+  <button class="rail-btn" title="Ports" onclick="setRailActive(this)">⚓</button>
+  <button class="rail-btn" title="Layers" onclick="toggleMapStyle(); setRailActive(this)">🗃</button>
+  <div class="rail-divider"></div>
+  <button class="rail-btn" title="Alerts" onclick="setRailActive(this)">🔔</button>
+  <button class="rail-btn" title="History" onclick="setRailActive(this)">📅</button>
+  <div style="flex:1"></div>
+  <button class="rail-btn" title="Settings" onclick="setRailActive(this)">⚙</button>
+</nav>
+
+<!-- Top Search -->
+<div id="top-search">
+  <div id="search-input-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search vessels, MMSI, IMO, callsign..." autocomplete="off" />
+    <button id="search-clear" onclick="clearSearch()">✕</button>
+  </div>
+  <div id="search-results"></div>
+</div>
+
+<!-- Right Toolbar -->
+<div id="right-toolbar">
+  <button class="tool-btn" title="Map Style" onclick="toggleMapStyle()">🗺</button>
+  <button class="tool-btn" title="Labels" onclick="toggleLabels(this)">🏷</button>
+  <button class="tool-btn" title="Trails" onclick="toggleTrails(this)">〰</button>
+  <button class="tool-btn" title="Fullscreen" onclick="toggleFullscreen()">⛶</button>
+</div>
+
+<!-- Zoom Controls -->
+<div id="zoom-controls">
+  <button class="zoom-btn" onclick="zoomIn()">+</button>
+  <button class="zoom-btn" onclick="zoomOut()">−</button>
+</div>
+
+<!-- Status Bar -->
+<div id="status-bar">
+  <div class="status-dot" id="status-dot"></div>
+  <span class="status-label live" id="status-label">CONNECTING</span>
+  <span class="status-sep">|</span>
+  <span id="vessel-count">0 vessels</span>
+  <span class="status-sep">|</span>
+  <span id="last-update">—</span>
+</div>
+
+<!-- Filter Panel -->
+<div id="filter-panel">
+  <h3>Filters</h3>
+  <div class="filter-group">
+    <div class="filter-group-label">Vessel Type</div>
+    <div class="filter-chip-row">
+      <button class="filter-chip active" data-type="all" onclick="setTypeFilter('all', this)">All</button>
+      <button class="filter-chip" data-type="Cargo" onclick="setTypeFilter('Cargo', this)">Cargo</button>
+      <button class="filter-chip" data-type="Tanker" onclick="setTypeFilter('Tanker', this)">Tanker</button>
+      <button class="filter-chip" data-type="Passenger" onclick="setTypeFilter('Passenger', this)">Passenger</button>
+      <button class="filter-chip" data-type="Fishing" onclick="setTypeFilter('Fishing', this)">Fishing</button>
+      <button class="filter-chip" data-type="Tug" onclick="setTypeFilter('Tug', this)">Tug</button>
+      <button class="filter-chip" data-type="Military" onclick="setTypeFilter('Military', this)">Military</button>
+      <button class="filter-chip" data-type="Pleasure" onclick="setTypeFilter('Pleasure', this)">Pleasure</button>
+      <button class="filter-chip" data-type="Other" onclick="setTypeFilter('Other', this)">Other</button>
+    </div>
+  </div>
+  <div class="filter-group">
+    <div class="filter-group-label">Min Speed (kn): <span id="speed-val">0</span></div>
+    <div class="filter-slider-row">
+      <input type="range" class="filter-slider" id="speed-filter" min="0" max="30" value="0" oninput="setSpeedFilter(this.value)" />
+    </div>
+  </div>
+</div>
+
+<!-- Map Type Panel -->
+<div id="map-type-panel">
+  <div class="panel-header" style="padding: 12px 16px;">
+    <span style="font-size:13px; color:var(--text-primary); font-weight:600;">🗺 Map type</span>
+    <button class="panel-close" onclick="closeMapTypePanel()">✕</button>
+  </div>
+  <div class="map-type-options">
+    <label class="map-type-label">
+      <input type="radio" name="map_type" value="light" onclick="setMapType('light')">
+      <span class="radio-custom"></span>
+      ☀️ Light map
+    </label>
+    <label class="map-type-label">
+      <input type="radio" name="map_type" value="dark" onclick="setMapType('dark')">
+      <span class="radio-custom"></span>
+      🌙 Dark map
+    </label>
+    <label class="map-type-label">
+      <input type="radio" name="map_type" value="satellite" onclick="setMapType('satellite')" checked>
+      <span class="radio-custom"></span>
+      🛰️ Satellite
+    </label>
+  </div>
+</div>
+
+<!-- Vessel Detail Panel -->
+<div id="vessel-panel">
+  <div class="panel-header">
+    <span style="font-size:13px; color:var(--text-secondary); font-weight:500;">Vessel Details</span>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+
+  <!-- Hero section -->
+  <div class="vessel-hero" id="panel-hero">
+    <div class="vessel-icon-row">
+      <div class="vessel-ship-icon" id="panel-ship-icon">🚢</div>
+      <div>
+        <div class="vessel-name" id="panel-vessel-name">—</div>
+        <div id="panel-type-badge" class="vessel-type-badge" style="background:rgba(156,163,175,0.15); color:#9ca3af;">Unknown</div>
+      </div>
+    </div>
+    <div id="panel-quality-badge" class="quality-badge quality-LIVE">● LIVE</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="panel-tabs">
+    <button class="panel-tab active" onclick="switchTab('overview', this)">Overview</button>
+    <button class="panel-tab" onclick="switchTab('voyage', this)">Voyage</button>
+    <button class="panel-tab" onclick="switchTab('technical', this)">Technical</button>
+    <button class="panel-tab" onclick="switchTab('raw', this)">Raw AIS</button>
+  </div>
+
+  <!-- Body -->
+  <div class="panel-body">
+
+    <div class="tab-content active" id="tab-overview">
+      <div class="panel-section">
+        <div class="section-label">Position</div>
+        <div class="data-row"><span class="data-key">Latitude</span><span class="data-val mono" id="d-lat">—</span></div>
+        <div class="data-row"><span class="data-key">Longitude</span><span class="data-val mono" id="d-lon">—</span></div>
+        <div class="data-row"><span class="data-key">Speed</span><span class="data-val" id="d-speed">—</span></div>
+        <div class="data-row"><span class="data-key">Course</span><span class="data-val" id="d-cog">—</span></div>
+        <div class="data-row"><span class="data-key">Heading</span><span class="data-val" id="d-heading">—</span></div>
+        <div class="data-row"><span class="data-key">Nav Status</span><span class="data-val" id="d-navstatus">—</span></div>
+      </div>
+      <div class="panel-section">
+        <div class="section-label">Identity</div>
+        <div class="data-row"><span class="data-key">MMSI</span><span class="data-val mono" id="d-mmsi">—</span></div>
+        <div class="data-row"><span class="data-key">IMO</span><span class="data-val mono" id="d-imo">—</span></div>
+        <div class="data-row"><span class="data-key">Callsign</span><span class="data-val mono" id="d-callsign">—</span></div>
+      </div>
+      <div class="panel-section">
+        <div class="section-label">Dimensions</div>
+        <div class="data-row"><span class="data-key">Length</span><span class="data-val" id="d-length">—</span></div>
+        <div class="data-row"><span class="data-key">Width</span><span class="data-val" id="d-width">—</span></div>
+        <div class="data-row"><span class="data-key">AIS Class</span><span class="data-val" id="d-aisclass">—</span></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-voyage">
+      <div class="panel-section">
+        <div class="section-label">Voyage</div>
+        <div class="data-row"><span class="data-key">Destination</span><span class="data-val" id="d-dest">—</span></div>
+        <div class="data-row"><span class="data-key">ETA</span><span class="data-val" id="d-eta">—</span></div>
+        <div class="data-row"><span class="data-key">Draught</span><span class="data-val" id="d-draught">—</span></div>
+      </div>
+      <div class="panel-section">
+        <div class="section-label">Current Status</div>
+        <div class="data-row"><span class="data-key">Navigation Status</span><span class="data-val" id="d-navstatus2">—</span></div>
+        <div class="data-row"><span class="data-key">Rate of Turn</span><span class="data-val" id="d-rot">—</span></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-technical">
+      <div class="panel-section">
+        <div class="section-label">AIS Technical Data</div>
+        <div class="data-row"><span class="data-key">Position Accuracy</span><span class="data-val" id="d-posaccuracy">—</span></div>
+        <div class="data-row"><span class="data-key">RAIM</span><span class="data-val" id="d-raim">—</span></div>
+        <div class="data-row"><span class="data-key">Source Type</span><span class="data-val" id="d-msgtype">—</span></div>
+        <div class="data-row"><span class="data-key">Last Position</span><span class="data-val" id="d-lastpos">—</span></div>
+        <div class="data-row"><span class="data-key">Last Update</span><span class="data-val" id="d-lastupdate">—</span></div>
+        <div class="data-row"><span class="data-key">Data Quality</span><span class="data-val" id="d-quality">—</span></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-raw">
+      <div class="panel-section">
+        <div class="section-label">Raw AIS Message</div>
+        <pre class="raw-json" id="d-rawjson">No raw data</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const vessels = new Map();
+const vesselTracks = new Map();
+let map = null;
+let ws = null;
+let selectedMmsi = null;
+let wsReconnectDelay = 1000;
+let wsReconnectTimer = null;
+let viewportUpdateTimer = null;
+let activeTypeFilter = 'all';
+let minSpeedFilter = 0;
+let showLabels = false;
+let showTrails = false;
+let geojsonSource = null;
+let isMapLoaded = false;
+let currentMapType = 'satellite';
+let popup = null;
+
+const MAP_STYLES = {
+  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  satellite: {
+    version: 8,
+    sources: {
+      'esri-satellite': {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      }
+    },
+    layers: [{
+      id: 'satellite-layer',
+      type: 'raster',
+      source: 'esri-satellite',
+      minzoom: 0,
+      maxzoom: 22
+    }]
+  }
+};
+
+const VESSEL_COLORS = {
+  Cargo: '#3b82f6', // blue
+  Tanker: '#ef4444', // red
+  Passenger: '#8b5cf6', // purple (to distinguish from cargo blue)
+  Fishing: '#f97316',
+  Tug: '#eab308',
+  Military: '#a855f7',
+  SAR: '#06b6d4',
+  Pleasure: '#ec4899',
+  Pilot: '#f59e0b',
+  Other: '#94a3b8',
+  Unknown: '#22c55e', // green
+};
+
+// ─── Map Initialization ───────────────────────────────────────────────────────
+function initMap() {
+  map = new maplibregl.Map({
+    container: 'map',
+    style: MAP_STYLES[currentMapType],
+    center: [0, 20],
+    zoom: 2.5,
+    attributionControl: false,
+  });
+
+  map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+  map.addControl(new maplibregl.ScaleControl({ unit: 'nautical' }), 'bottom-right');
+
+  map.on('load', async () => {
+    try {
+      isMapLoaded = true;
+      await addVesselLayer();
+      connectWebSocket();
+      hideLoading();
+    } catch (error) {
+      console.error('[MAP_INIT_ERROR]', error);
+      document.querySelector('#loading-overlay .loading-text').textContent = 'Unable to load map layers';
+    }
+  });
+
+  map.on('moveend', debounce(onViewportChange, 700));
+
+  // Click on vessel
+  map.on('click', 'vessels-icons', (e) => {
+    const props = e.features[0].properties;
+    selectVessel(props.mmsi);
+  });
+
+  map.on('mouseenter', 'vessels-icons', (e) => {
+    map.getCanvas().style.cursor = 'pointer';
+    const props = e.features[0].properties;
+    const coords = e.features[0].geometry.coordinates.slice();
+
+    if (popup) popup.remove();
+    popup = new maplibregl.Popup({ closeButton: false, offset: 10 })
+      .setLngLat(coords)
+       .setDOMContent(createPopupContent(props))
+       .addTo(map);
+  });
+
+  map.on('mouseleave', 'vessels-icons', () => {
+    map.getCanvas().style.cursor = '';
+    if (popup) { popup.remove(); popup = null; }
+  });
+}
+
+function loadVesselIcon() {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <path fill="#fff" d="M32 2 L54 60 L32 48 L10 60 Z"/>
+    </svg>`;
+  const image = new Image();
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  return new Promise((resolve, reject) => {
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Unable to load vessel icon'));
+  });
+}
+
+function createPopupContent(props) {
+  const content = document.createElement('div');
+  const name = document.createElement('div');
+  name.className = 'popup-name';
+  name.textContent = props.name || 'Unknown Vessel';
+  const mmsi = document.createElement('div');
+  mmsi.className = 'popup-mmsi';
+  mmsi.textContent = `MMSI: ${props.mmsi}`;
+  const speed = document.createElement('div');
+  speed.className = 'popup-speed';
+  speed.textContent = `${props.sog != null ? Number(props.sog).toFixed(1) + ' kn' : 'Speed unknown'} · ${props.category || 'Unknown'}`;
+  content.append(name, mmsi, speed);
+  return content;
+}
+
+async function addVesselLayer() {
+  if (map.getSource('vessels')) return;
+  const icon = await loadVesselIcon();
+  if (!map.hasImage('vessel-icon')) map.addImage('vessel-icon', icon, { sdf: true, pixelRatio: 2 });
+
+  map.addSource('vessels', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] }
+  });
+
+  // Individual vessel icons, rendered without aggregation at every zoom level.
+  map.addLayer({
+    id: 'vessels-icons',
+    type: 'symbol',
+    source: 'vessels',
+    layout: {
+      'icon-image': 'vessel-icon',
+      'icon-size': [
+        'interpolate', ['linear'], ['zoom'],
+        2, 0.25,
+        5, 0.4,
+        8, 0.6,
+        12, 0.85
+      ],
+      'icon-rotate': ['get', 'rotation'],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+    },
+    paint: {
+      'icon-color': ['get', 'color'],
+      'icon-opacity': 0.95,
+      'icon-halo-color': [
+        'case', ['==', ['get', 'selected'], 1], '#ffffff', 'rgba(0,0,0,0.6)'
+      ],
+      'icon-halo-width': [
+        'case', ['==', ['get', 'selected'], 1], 2, 0.5
+      ]
+    }
+  });
+
+  // Names remain a separate layer so labels can be toggled independently.
+  map.addLayer({
+    id: 'vessels-labels',
+    type: 'symbol',
+    source: 'vessels',
+    minzoom: 5.5,
+    layout: {
+      'text-field': ['case', ['literal', showLabels], ['get', 'displayName'], ''],
+      'text-size': ['interpolate', ['linear'], ['zoom'], 5.5, 9, 10, 11, 14, 13],
+      'text-offset': [0, 1.4],
+      'text-anchor': 'top',
+      'text-optional': true,
+      'text-allow-overlap': false,
+    },
+    paint: {
+      'text-color': '#e2e8f0',
+      'text-halo-color': 'rgba(0,0,0,0.8)',
+      'text-halo-width': 1,
+    }
+  });
+
+  map.addSource('vessel-trails', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] }
+  });
+  map.addLayer({
+    id: 'vessel-trails',
+    type: 'line',
+    source: 'vessel-trails',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': 1.5,
+      'line-opacity': ['case', ['literal', showTrails], 0.55, 0]
+    }
+  });
+
+}
+
+// ─── GeoJSON update ───────────────────────────────────────────────────────────
+function updateMapData() {
+  if (!isMapLoaded || !map.getSource('vessels')) return;
+
+  const features = [];
+  for (const [mmsi, v] of vessels) {
+    if (!Number.isFinite(Number(v.latitude)) || !Number.isFinite(Number(v.longitude))
+      || Number(v.latitude) < -90 || Number(v.latitude) > 90
+      || Number(v.longitude) < -180 || Number(v.longitude) > 180) continue;
+
+    // Apply filters
+    if (activeTypeFilter !== 'all' && v.vesselCategory !== activeTypeFilter) continue;
+    if (minSpeedFilter > 0 && (!Number.isFinite(Number(v.sog)) || Number(v.sog) < minSpeedFilter)) continue;
+
+    const color = VESSEL_COLORS[v.vesselCategory] || VESSEL_COLORS.Unknown;
+    const rotation = v.heading != null && v.heading >= 0 && v.heading < 511
+      ? v.heading
+      : (v.cog != null && v.cog >= 0 ? v.cog : 0);
+
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [v.longitude, v.latitude] },
+      properties: {
+        mmsi,
+        name: v.name || '',
+        displayName: v.name ? v.name.substring(0, 12) : mmsi.substring(0, 9),
+        category: v.vesselCategory || 'Unknown',
+        color,
+        rotation,
+        sog: Number.isFinite(Number(v.sog)) ? Number(v.sog) : null,
+        selected: mmsi === selectedMmsi ? 1 : 0,
+      }
+    });
+  }
+
+  map.getSource('vessels').setData({
+    type: 'FeatureCollection',
+    features
+  });
+  const trailFeatures = [];
+  for (const [mmsi, track] of vesselTracks) {
+    if (track.length < 2) continue;
+    trailFeatures.push({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: track.map(point => [point.lon, point.lat]) },
+      properties: { color: VESSEL_COLORS[vessels.get(mmsi)?.vesselCategory] || VESSEL_COLORS.Unknown }
+    });
+  }
+  const trailSource = map.getSource('vessel-trails');
+  if (trailSource) trailSource.setData({ type: 'FeatureCollection', features: trailFeatures });
+}
+
+// ─── WebSocket connection to backend ─────────────────────────────────────────
+const BACKEND_WS = (() => {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = location.hostname || 'localhost';
+  let portStr = location.port ? `:${location.port}` : (location.protocol === 'file:' ? ':3001' : '');
+  if (host === 'localhost' || host === '127.0.0.1') portStr = ':3001';
+  return `${proto}//${host}${portStr}/ws`;
+})();
+
+const BACKEND_API = (() => {
+  const proto = location.protocol === 'file:' ? 'http:' : location.protocol;
+  const host = location.hostname || 'localhost';
+  let portStr = location.port ? `:${location.port}` : (location.protocol === 'file:' ? ':3001' : '');
+  if (host === 'localhost' || host === '127.0.0.1') portStr = ':3001';
+  return `${proto}//${host}${portStr}/api/v1`;
+})();
+
+function connectWebSocket() {
+  if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+
+  try {
+    ws = new WebSocket(BACKEND_WS);
+  } catch (e) {
+    console.error('WS connect error', e);
+    scheduleWsReconnect();
+    return;
+  }
+
+  ws.onopen = () => {
+    console.log('Connected to backend');
+    wsReconnectDelay = 1000;
+    onViewportChange();
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      handleServerMessage(msg);
+    } catch (error) {
+      console.error('[WS_MESSAGE_PARSE_ERROR]', error);
+    }
+  };
+
+  ws.onclose = () => {
+    console.log('Backend WS closed');
+    scheduleWsReconnect();
+  };
+
+  ws.onerror = (error) => {
+    console.error('[WS_ERROR]', error);
+    scheduleWsReconnect();
+  };
+}
+
+function scheduleWsReconnect() {
+  setStatus('RECONNECTING');
+  if (wsReconnectTimer) return;
+  wsReconnectTimer = setTimeout(() => {
+    wsReconnectTimer = null;
+    wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
+    connectWebSocket();
+  }, wsReconnectDelay);
+}
+
+function handleServerMessage(msg) {
+  switch (msg.type) {
+    case 'VESSEL_SNAPSHOT':
+    case 'INITIAL_VESSELS':
+      for (const v of msg.data) {
+        const previous = vessels.get(v.mmsi);
+        vessels.set(v.mmsi, { ...previous, ...v });
+      }
+      scheduleMapUpdate();
+      break;
+
+    case 'VESSEL_UPDATE':
+    case 'VESSEL_UPDATE_BATCH':
+      const updates = msg.type === 'VESSEL_UPDATE_BATCH' ? msg.data : [msg.data];
+      for (const v of updates) {
+        const previous = vessels.get(v.mmsi);
+        vessels.set(v.mmsi, { ...previous, ...v });
+        if (v.latitude != null && v.longitude != null
+          && (!previous || previous.latitude !== v.latitude || previous.longitude !== v.longitude)) {
+          const track = vesselTracks.get(v.mmsi) || [];
+          track.push({ lat: Number(v.latitude), lon: Number(v.longitude) });
+          if (track.length > 120) track.splice(0, track.length - 120);
+          vesselTracks.set(v.mmsi, track);
+        }
+        // Update open panel live
+        if (selectedMmsi === v.mmsi) updatePanel(vessels.get(v.mmsi));
+      }
+      // Throttle map updates
+      scheduleMapUpdate();
+      break;
+
+    case 'VESSEL_REMOVED':
+      vessels.delete(msg.data.mmsi);
+      vesselTracks.delete(msg.data.mmsi);
+      if (selectedMmsi === msg.data.mmsi) closePanel();
+      scheduleMapUpdate();
+      break;
+
+    case 'CONNECTION_STATUS':
+      setStatus(msg.data.status);
+      break;
+
+    case 'MAP_STATS':
+      updateStats(msg.data);
+      break;
+    case 'ERROR':
+      console.error('[BACKEND_ERROR]', msg.data?.message || 'Unknown backend error');
+      break;
+  }
+}
+
+let mapUpdatePending = false;
+function scheduleMapUpdate() {
+  if (mapUpdatePending) return;
+  mapUpdatePending = true;
+  requestAnimationFrame(() => {
+    mapUpdatePending = false;
+    updateMapData();
+    updateVesselCount();
+  });
+}
+
+// ─── Viewport subscription ────────────────────────────────────────────────────
+function onViewportChange() {
+  if (!map || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  const bounds = map.getBounds();
+  ws.send(JSON.stringify({
+    type: 'UPDATE_VIEWPORT',
+    data: {
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest(),
+    }
+  }));
+}
+
+// ─── Vessel selection & panel ─────────────────────────────────────────────────
+function selectVessel(mmsi) {
+  selectedMmsi = mmsi;
+  const vessel = vessels.get(mmsi);
+  if (!vessel) return;
+
+  updatePanel(vessel);
+  document.getElementById('vessel-panel').classList.add('open');
+
+  // Fly to vessel
+  if (Number.isFinite(Number(vessel.latitude)) && Number.isFinite(Number(vessel.longitude))) {
+    map.flyTo({ center: [vessel.longitude, vessel.latitude], zoom: Math.max(map.getZoom(), 8), duration: 1200 });
+  }
+
+  // Re-render to highlight selection
+  updateMapData();
+}
+
+function updatePanel(v) {
+  // Hero
+  const color = VESSEL_COLORS[v.vesselCategory] || VESSEL_COLORS.Unknown;
+  document.getElementById('panel-ship-icon').style.background = color + '22';
+  document.getElementById('panel-vessel-name').textContent = v.name || `MMSI: ${v.mmsi}`;
+  const typeBadge = document.getElementById('panel-type-badge');
+  typeBadge.textContent = v.vesselCategory || 'Unknown';
+  typeBadge.style.background = color + '22';
+  typeBadge.style.color = color;
+
+  const q = v.quality || 'OFFLINE';
+  const qBadge = document.getElementById('panel-quality-badge');
+  qBadge.textContent = `● ${q}`;
+  qBadge.className = `quality-badge quality-${q}`;
+
+  // Overview
+  setText('d-lat', v.latitude != null ? v.latitude.toFixed(5) + '°' : '—');
+  setText('d-lon', v.longitude != null ? v.longitude.toFixed(5) + '°' : '—');
+  setText('d-speed', Number.isFinite(Number(v.sog)) ? Number(v.sog).toFixed(1) + ' kn' : '—');
+  setText('d-cog', Number.isFinite(Number(v.cog)) ? Number(v.cog).toFixed(1) + '°' : '—');
+  const heading = Number.isFinite(Number(v.heading)) && Number(v.heading) >= 0 && Number(v.heading) < 511 ? Number(v.heading) + '°' : '—';
+  setText('d-heading', heading);
+  setText('d-navstatus', v.navigationStatusText || (v.navigationStatus != null ? `Status ${v.navigationStatus}` : '—'));
+  setText('d-mmsi', v.mmsi);
+  setText('d-imo', v.imo || '—');
+  setText('d-callsign', v.callsign || '—');
+  setText('d-length', Number.isFinite(Number(v.length)) ? v.length + ' m' : '—');
+  setText('d-width', Number.isFinite(Number(v.width)) ? v.width + ' m' : '—');
+  setText('d-aisclass', v.aisClass || '—');
+
+  // Voyage
+  setText('d-dest', v.destination || '—');
+  setText('d-eta', v.eta || '—');
+  setText('d-draught', Number.isFinite(Number(v.draught)) ? v.draught + ' m' : '—');
+  setText('d-navstatus2', v.navigationStatusText || '—');
+  setText('d-rot', v.rateOfTurn != null ? v.rateOfTurn + ' °/min' : '—');
+
+  // Technical
+  setText('d-posaccuracy', v.positionAccuracy != null ? (v.positionAccuracy ? 'High' : 'Low') : '—');
+  setText('d-raim', v.raim != null ? (v.raim ? 'Active' : 'Inactive') : '—');
+  setText('d-msgtype', v.sourceMessageType || '—');
+  setText('d-lastpos', v.lastPositionUpdate ? fmtTime(v.lastPositionUpdate) : '—');
+  setText('d-lastupdate', v.lastUpdate ? fmtTime(v.lastUpdate) : '—');
+  setText('d-quality', q);
+
+  // Raw
+  document.getElementById('d-rawjson').textContent = v.rawMessage ? JSON.stringify(v.rawMessage, null, 2) : '(No raw message captured yet)';
+}
+
+function closePanel() {
+  document.getElementById('vessel-panel').classList.remove('open');
+  selectedMmsi = null;
+  updateMapData();
+}
+
+// ─── Status / Stats ───────────────────────────────────────────────────────────
+function setStatus(status) {
+  const dot = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  if (status === 'LIVE') {
+    dot.className = 'status-dot';
+    label.className = 'status-label live';
+    label.textContent = 'LIVE';
+  } else if (status === 'RECONNECTING') {
+    dot.className = 'status-dot warn';
+    label.className = 'status-label warn';
+    label.textContent = 'RECONNECTING';
+  } else {
+    dot.className = 'status-dot offline';
+    label.className = 'status-label offline';
+    label.textContent = 'OFFLINE';
+  }
+}
+
+function updateVesselCount() {
+  let count = 0;
+  for (const v of vessels.values()) {
+    if (!Number.isFinite(Number(v.latitude)) || !Number.isFinite(Number(v.longitude))) continue;
+    if (activeTypeFilter !== 'all' && v.vesselCategory !== activeTypeFilter) continue;
+    if (minSpeedFilter > 0 && (!Number.isFinite(Number(v.sog)) || Number(v.sog) < minSpeedFilter)) continue;
+    count++;
+  }
+  document.getElementById('vessel-count').textContent = `${count.toLocaleString()} visible`;
+}
+
+function updateStats(data) {
+  if (data.lastEventTime) {
+    const ago = Math.round((Date.now() - new Date(data.lastEventTime).getTime()) / 1000);
+    document.getElementById('last-update').textContent = `${ago}s ago`;
+  }
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+let searchTimer = null;
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+  const q = e.target.value.trim();
+  document.getElementById('search-clear').style.display = q ? 'flex' : 'none';
+  clearTimeout(searchTimer);
+  if (!q) { hideSearchResults(); return; }
+  searchTimer = setTimeout(() => doSearch(q), 200);
+});
+
+document.getElementById('search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') clearSearch();
+});
+
+function doSearch(q) {
+  // Search locally in vessels map
+  const ql = q.toLowerCase();
+  const results = [];
+  for (const [mmsi, v] of vessels) {
+    if (
+      (v.name && v.name.toLowerCase().includes(ql)) ||
+      mmsi.includes(ql) ||
+      (v.imo && String(v.imo).includes(ql)) ||
+      (v.callsign && v.callsign.toLowerCase().includes(ql)) ||
+      (v.destination && v.destination.toLowerCase().includes(ql))
+    ) {
+      results.push(v);
+      if (results.length >= 15) break;
+    }
+  }
+  renderSearchResults(results);
+}
+
+function renderSearchResults(results) {
+  const el = document.getElementById('search-results');
+  el.replaceChildren();
+  if (!results.length) {
+    const empty = document.createElement('div');
+    empty.className = 'search-result-item';
+    empty.textContent = 'No vessels found';
+    el.appendChild(empty);
+    el.style.display = 'block';
+    return;
+  }
+
+  results.forEach(v => {
+    const color = VESSEL_COLORS[v.vesselCategory] || VESSEL_COLORS.Unknown;
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.addEventListener('click', () => selectFromSearch(v.mmsi));
+    const dot = document.createElement('div');
+    dot.className = 'result-dot';
+    dot.style.backgroundColor = color;
+    const info = document.createElement('div');
+    info.className = 'result-info';
+    const name = document.createElement('div');
+    name.className = 'result-name';
+    name.textContent = v.name || 'Unknown';
+    const meta = document.createElement('div');
+    meta.className = 'result-meta';
+    meta.textContent = `MMSI: ${v.mmsi}${v.imo ? ' · IMO: ' + v.imo : ''} · ${v.vesselCategory || 'Unknown'}`;
+    info.append(name, meta);
+    item.append(dot, info);
+    el.appendChild(item);
+  });
+  el.style.display = 'block';
+}
+
+function hideSearchResults() {
+  document.getElementById('search-results').style.display = 'none';
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  hideSearchResults();
+}
+
+function selectFromSearch(mmsi) {
+  clearSearch();
+  selectVessel(mmsi);
+}
+
+// Close popups on outside click
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('top-search').contains(e.target)) hideSearchResults();
+  
+  const mapPanel = document.getElementById('map-type-panel');
+  if (mapPanel && mapPanel.style.display === 'flex') {
+    const isClickInside = mapPanel.contains(e.target);
+    const isClickOnBtn = e.target.closest('[onclick*="toggleMapStyle"]');
+    if (!isClickInside && !isClickOnBtn) {
+      closeMapTypePanel();
+    }
+  }
+});
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.panel-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ─── Filters ──────────────────────────────────────────────────────────────────
+function toggleFilters() {
+  const fp = document.getElementById('filter-panel');
+  fp.style.display = fp.style.display === 'block' ? 'none' : 'block';
+}
+
+function setTypeFilter(type, btn) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  activeTypeFilter = type;
+  updateMapData();
+}
+
+function setSpeedFilter(val) {
+  minSpeedFilter = parseFloat(val);
+  document.getElementById('speed-val').textContent = val;
+  updateMapData();
+}
+
+// ─── Map controls ────────────────────────────────────────────────────────────
+function zoomIn() { map.zoomIn({ duration: 300 }); }
+function zoomOut() { map.zoomOut({ duration: 300 }); }
+function toggleFullscreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+  else document.exitFullscreen().catch(() => {});
+}
+
+let mapStyleLoading = false;
+
+function toggleMapStyle() {
+  const panel = document.getElementById('map-type-panel');
+  panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function closeMapTypePanel() {
+  document.getElementById('map-type-panel').style.display = 'none';
+}
+
+function setMapType(type) {
+  if (currentMapType === type || mapStyleLoading) return;
+  mapStyleLoading = true;
+  currentMapType = type;
+  map.setStyle(MAP_STYLES[type]);
+  map.once('styledata', async () => {
+    try {
+      await addVesselLayer();
+      updateMapData();
+    } catch (error) {
+      console.error('[MAP_STYLE_ERROR]', error);
+    } finally {
+      mapStyleLoading = false;
+    }
+  });
+}
+
+function toggleLabels(btn) {
+  showLabels = !showLabels;
+  btn.classList.toggle('active', showLabels);
+  if (map && map.getLayer('vessels-labels')) {
+    map.setLayoutProperty('vessels-labels', 'text-field',
+      showLabels ? ['get', 'displayName'] : '');
+  }
+  updateMapData();
+}
+
+function toggleTrails(btn) {
+  showTrails = !showTrails;
+  btn.classList.toggle('active', showTrails);
+  if (map && map.getLayer('vessel-trails')) {
+    map.setPaintProperty('vessel-trails', 'line-opacity', showTrails ? 0.55 : 0);
+  }
+  updateMapData();
+}
+
+// ─── Rail ────────────────────────────────────────────────────────────────────
+function setRailActive(btn) {
+  document.querySelectorAll('.rail-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ─── UI helpers ──────────────────────────────────────────────────────────────
+function hideLoading() {
+  const overlay = document.getElementById('loading-overlay');
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.remove(), 600);
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function fmtTime(isoStr) {
+  if (!isoStr) return '—';
+  try {
+    const d = new Date(isoStr);
+    const ago = Math.round((Date.now() - d.getTime()) / 1000);
+    if (ago < 60) return `${ago}s ago`;
+    if (ago < 3600) return `${Math.round(ago/60)}m ago`;
+    return d.toLocaleTimeString();
+  } catch { return isoStr; }
+}
+
+function debounce(fn, delay) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+initMap();
+</script>
+</body>
+</html>

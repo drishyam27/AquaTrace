@@ -1,0 +1,55 @@
+# ============================================================
+# AquaTrace — Root .gitignore
+# ============================================================
+
+# ---- Node.js ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# ---- Python ----
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+
+# ---- Environment secrets — NEVER commit ----
+.env
+.env.local
+.env.*.local
+
+# ---- Generated outputs — not source code ----
+outputs/
+*.log
+
+# ---- OS-generated ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- IDE / Editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---- Git history utilities (one-off scripts) ----
+scripts/git-author-rewrite.sh
+
+# ---- Build artifacts ----
+dist/
+build/
+
+# ---- Personal/scratch folders ----
+personal/
+scratch/

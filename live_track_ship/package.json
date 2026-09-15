@@ -1,0 +1,38 @@
+{
+  "name": "shiptrack-live-ais",
+  "version": "1.0.0",
+  "description": "Real-time global ship tracking application powered by AISStream.io — live AIS vessel positions on an interactive MapLibre GL map.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test:client": "node tests/test_client.js"
+  },
+  "keywords": [
+    "ais",
+    "ship-tracking",
+    "maritime",
+    "vessel",
+    "maplibre",
+    "websocket",
+    "real-time",
+    "geospatial"
+  ],
+  "author": "zaidsamii",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zaidsamii/shiptrack-live-ais.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {}
+}
