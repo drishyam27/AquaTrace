@@ -1,0 +1,21 @@
+{
+  "name": "aquatrace-suite",
+  "version": "1.0.0",
+  "description": "AquaTrace — Satellite Oil Spill Detection & AIS Vessel Correlation Engine",
+  "main": "scripts/start-all.js",
+  "scripts": {
+    "start": "node scripts/start-all.js",
+    "server": "node live_track_ship/src/server.js",
+    "attribution": "python aquatrace_ais/run_attribution.py",
+    "test": "node tests/live-tracking/test-client.js"
+  },
+  "keywords": [
+    "aquatrace",
+    "ais",
+    "oil-spill-detection",
+    "sentinel-1",
+    "vessel-tracking"
+  ],
+  "author": "zaidsamii",
+  "license": "MIT"
+}

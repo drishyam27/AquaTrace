@@ -19,8 +19,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Public static assets (MapLibre UI, styles, icons)
+// Static directories
 const publicDir = path.resolve(__dirname, '../public');
+const frontendDir = path.resolve(__dirname, '../../frontend');
+const docsDir = path.resolve(__dirname, '../../docs');
+
+// Mount routes
+app.use('/aquatrace', express.static(frontendDir));
+app.use('/tracker', express.static(publicDir));
+app.use('/attribution-report', express.static(path.resolve(docsDir, 'ais-attribution')));
+app.use(express.static(frontendDir));
 app.use(express.static(publicDir));
 
 // Mount REST API
@@ -31,7 +39,10 @@ app.get('{*path}', (req, res, next) => {
   if (req.path.startsWith('/api/') || req.path.startsWith('/ws')) {
     return next();
   }
-  res.sendFile(path.join(publicDir, 'index.html'));
+  if (req.path.startsWith('/tracker')) {
+    return res.sendFile(path.join(publicDir, 'index.html'));
+  }
+  res.sendFile(path.join(frontendDir, 'index.html'));
 });
 
 // Create HTTP & WebSocket server
@@ -44,12 +55,15 @@ broadcastService.init(wss);
 // Server startup
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`\n🚢 ==============================================`);
-  console.log(`🚢 ShipTrack Live AIS Server v1.0.0`);
-  console.log(`🚢 HTTP & API:    http://localhost:${PORT}`);
-  console.log(`🚢 WebSocket:     ws://localhost:${PORT}/ws`);
-  console.log(`🚢 Environment:   ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🚢 ==============================================\n`);
+  console.log(`\n🌊 ==============================================`);
+  console.log(`🌊 AquaTrace & ShipTrack Server ONLINE`);
+  console.log(`🌊 Main Portal:        http://localhost:${PORT}`);
+  console.log(`🌊 Live Radar:         http://localhost:${PORT}/tracker`);
+  console.log(`🌊 Attribution Report: http://localhost:${PORT}/attribution-report/ais-attribution.html`);
+  console.log(`🌊 REST API:           http://localhost:${PORT}/api/v1/health`);
+  console.log(`🌊 WebSocket:          ws://localhost:${PORT}/ws`);
+  console.log(`🌊 Environment:        ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🌊 ==============================================\n`);
 
   // Connect to upstream AIS data provider
   aisProvider.connect();

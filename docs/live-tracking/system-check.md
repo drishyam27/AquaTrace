@@ -3,7 +3,7 @@
 **Auditor:** Senior Software Architect + Full-Stack Engineer + Security Reviewer  
 **Date:** 2026-09-06  
 **Project:** ShipTrack — Live AIS Vessel Tracker  
-**Codebase Root:** `d:/SIH - CLAUDE/files/`  
+**Codebase Root:** `AquaTrace`  
 **Audit Scope:** FULL — All files, all data paths, all subsystems  
 **Code Modified:** NONE — Audit only
 
@@ -391,7 +391,7 @@ User's screen
 
 ### Finding: NO OIL SPILL DETECTION SYSTEM EXISTS
 
-Despite the project being created under "SIH - CLAUDE" (Smart India Hackathon), there is:
+In the current baseline, there is:
 - No satellite image ingestion
 - No image preprocessing
 - No ML/AI model inference
@@ -406,7 +406,7 @@ Despite the project being created under "SIH - CLAUDE" (Smart India Hackathon), 
 **The application is purely a ship tracking system.** If oil spill detection is a project requirement, it has not been implemented.
 
 **UNVERIFIED — requires stakeholder clarification:**
-- Is oil spill detection a required feature for the SIH submission?
+- Is oil spill detection a required feature for the deployment?
 
 ---
 
@@ -848,7 +848,7 @@ Strategy: Start top-right (easy + high impact), then bottom-right.
 4. **Testability:** Zero automated tests.
 5. **Data coverage:** Terrestrial AIS only — an inherent provider limitation.
 
-**For SIH demo purposes**, the application is functional and visually impressive. For production deployment, the P0 and P1 items in the roadmap must be addressed first.
+**For prototype demo purposes**, the application is functional and visually impressive. For production deployment, the P0 and P1 items in the roadmap must be addressed first.
 
 ---
 

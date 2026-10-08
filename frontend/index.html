@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AquaTrace | Satellite Oil Spill Detection &amp; AIS Vessel Correlation Engine</title>
-  <meta name="description" content="AquaTrace uses Sentinel-1 SAR satellite imagery to detect marine oil slicks and correlates them with AIS vessel trajectories to identify investigation candidates.">
+  <meta name="description"
+    content="AquaTrace uses Sentinel-1 SAR satellite imagery to detect marine oil slicks and correlates them with AIS vessel trajectories to identify investigation candidates.">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&display=swap"
+    rel="stylesheet">
 
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,23 +28,23 @@
       theme: {
         extend: {
           colors: {
-            cream:    '#F6F4EE',
-            stark:    '#111111',
+            cream: '#F6F4EE',
+            stark: '#111111',
             darknavy: '#0F2537',
-            skyblue:  '#00A8E8',
-            sand:     '#D4A373',
-            slatebody:'#2B2D42'
+            skyblue: '#00A8E8',
+            sand: '#D4A373',
+            slatebody: '#2B2D42'
           },
           fontFamily: {
-            syne:  ['Syne', 'sans-serif'],
+            syne: ['Syne', 'sans-serif'],
             serif: ['Instrument Serif', 'serif'],
-            mono:  ['Space Mono', 'monospace'],
-            body:  ['Plus Jakarta Sans', 'sans-serif']
+            mono: ['Space Mono', 'monospace'],
+            body: ['Plus Jakarta Sans', 'sans-serif']
           },
           boxShadow: {
-            brutal:       '4px 4px 0px #111111',
-            'brutal-lg':  '6px 6px 0px #111111',
-            'brutal-blue':'4px 4px 0px #00A8E8'
+            brutal: '4px 4px 0px #111111',
+            'brutal-lg': '6px 6px 0px #111111',
+            'brutal-blue': '4px 4px 0px #00A8E8'
           }
         }
       }
@@ -64,40 +68,48 @@
 
       <!-- Logo & Project Identity -->
       <div class="flex items-center space-x-2 sm:space-x-3">
-        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-darknavy border-2 border-stark flex items-center justify-center text-skyblue shadow-brutal shrink-0">
+        <div
+          class="w-9 h-9 sm:w-10 sm:h-10 bg-darknavy border-2 border-stark flex items-center justify-center text-skyblue shadow-brutal shrink-0">
           <i class="fa-solid fa-satellite-dish text-base sm:text-lg"></i>
         </div>
         <div>
-          <span class="aq-logo-text font-syne font-extrabold text-xl sm:text-2xl tracking-tight text-stark block leading-none">
+          <span
+            class="aq-logo-text font-syne font-extrabold text-xl sm:text-2xl tracking-tight text-stark block leading-none">
             Aqua<span class="text-skyblue">Trace</span>
           </span>
-          <span class="aq-logo-sub font-mono text-[9px] sm:text-[10px] text-gray-600 tracking-wider uppercase block mt-0.5">
-            SIH26143 • SAR + AIS TRACKER
+          <span
+            class="aq-logo-sub font-mono text-[9px] sm:text-[10px] text-gray-600 tracking-wider uppercase block mt-0.5">
+            SATELLITE RADAR &amp; AIS TRACKER
           </span>
         </div>
       </div>
 
       <!-- System Status & Dashboard Dropdown -->
       <div class="flex items-center space-x-2 sm:space-x-3">
-        <div class="hidden sm:flex items-center space-x-2 border-2 border-stark bg-white px-3 py-1.5 font-mono text-xs shadow-brutal">
+        <div
+          class="hidden sm:flex items-center space-x-2 border-2 border-stark bg-white px-3 py-1.5 font-mono text-xs shadow-brutal">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span class="font-bold text-darknavy">SENTINEL-1 ONLINE</span>
         </div>
 
         <!-- Dashboard Dropdown Menu -->
         <div class="relative group">
-          <button class="aq-dashboard-btn bg-skyblue text-stark px-2 sm:px-4 py-2 font-mono text-xs font-bold uppercase border-2 border-stark shadow-brutal flex items-center gap-2 cursor-pointer transition-colors hover:bg-white hover:text-skyblue">
+          <button
+            class="aq-dashboard-btn bg-skyblue text-stark px-2 sm:px-4 py-2 font-mono text-xs font-bold uppercase border-2 border-stark shadow-brutal flex items-center gap-2 cursor-pointer transition-colors hover:bg-white hover:text-skyblue">
             <i class="fa-solid fa-gauge-high"></i>
             <span class="hidden xs:inline sm:inline">Dashboard</span>
             <i class="fa-solid fa-caret-down"></i>
           </button>
-          <div class="absolute right-0 top-full pt-2 w-64 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 delay-500 group-hover:delay-0 z-50">
+          <div
+            class="absolute right-0 top-full pt-2 w-64 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 delay-500 group-hover:delay-0 z-50">
             <div class="bg-cream border-2 border-stark shadow-brutal">
-              <a href="../live_track_ship/public/index.html" class="block px-4 py-3 font-mono text-xs font-bold text-stark hover:bg-skyblue hover:text-stark border-b-2 border-stark transition-colors">
-                Live AIS Tracker
+              <a href="/tracker"
+                class="block px-4 py-3 font-mono text-xs font-bold text-stark hover:bg-skyblue hover:text-stark border-b-2 border-stark transition-colors">
+                Live AIS Tracker (MapLibre)
               </a>
-              <a href="../aquatrace_ais/project_info/ais-attribution.html" class="block px-4 py-3 font-mono text-xs font-bold text-stark hover:bg-skyblue hover:text-stark transition-colors">
-                Who Discharged
+              <a href="/attribution-report/ais-attribution.html"
+                class="block px-4 py-3 font-mono text-xs font-bold text-stark hover:bg-skyblue hover:text-stark transition-colors">
+                Who Discharged (Attribution Report)
               </a>
             </div>
           </div>
@@ -114,33 +126,100 @@
   <section class="border-b-2 border-stark bg-cream pt-10 pb-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto">
 
-      <!-- Sub-tagline -->
-      <div class="aq-hero-tagline flex items-center space-x-2 font-mono text-[10px] sm:text-xs uppercase text-darknavy font-bold mb-3">
-        <span class="bg-darknavy text-skyblue px-2 py-0.5 shrink-0">HIGH-CONFIDENCE ALGORITHM</span>
-        <span class="hidden sm:inline">— SATELLITE RADAR MULTI-TEMPORAL ANALYSIS</span>
+      <!-- Hero Content & 3D Simulation Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+
+        <!-- Left Column: Editorial Headline & Actions -->
+        <div class="lg:col-span-7">
+          <!-- Sub-tagline -->
+          <div
+            class="aq-hero-tagline flex items-center space-x-2 font-mono text-[10px] sm:text-xs uppercase text-darknavy font-bold mb-3">
+            <span class="bg-darknavy text-skyblue px-2 py-0.5 shrink-0">HIGH-CONFIDENCE ALGORITHM</span>
+            <span class="hidden sm:inline">— SATELLITE RADAR MULTI-TEMPORAL ANALYSIS</span>
+          </div>
+
+          <!-- Editorial Title -->
+          <h1
+            class="font-syne font-extrabold text-3xl sm:text-6xl lg:text-7xl leading-tight sm:leading-none text-stark tracking-tight">
+            THE OCEAN IS <span
+              class="font-serif italic font-normal text-darknavy underline decoration-skyblue decoration-4">WATCHING.</span>
+          </h1>
+
+          <p class="mt-4 font-body text-base sm:text-lg text-slatebody max-w-2xl leading-relaxed">
+            Leveraging Sentinel-1 Synthetic Aperture Radar (SAR) imagery to automatically detect marine oil slicks, combined
+            with spatio-temporal AIS trajectory tracking to surface ranked investigation candidates for review.
+          </p>
+
+          <!-- Interactive 3D Simulation Quick Controls -->
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <a href="/tracker"
+              class="bg-skyblue text-stark font-mono font-bold text-xs uppercase px-4 py-2.5 border-2 border-stark shadow-brutal hover:bg-stark hover:text-skyblue transition-colors flex items-center gap-2">
+              <i class="fa-solid fa-satellite-dish"></i> Open Full Live Map
+            </a>
+            <button id="toggle-3d-radar-scan"
+              class="bg-darknavy text-skyblue font-mono font-bold text-xs uppercase px-4 py-2.5 border-2 border-stark shadow-brutal hover:bg-white hover:text-darknavy transition-colors flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-radar"></i> Pulse Radar Scan
+            </button>
+            <button id="toggle-3d-cam-mode"
+              class="bg-white text-stark font-mono font-bold text-xs uppercase px-4 py-2.5 border-2 border-stark shadow-brutal hover:bg-cream transition-colors flex items-center gap-2 cursor-pointer">
+              <i class="fa-solid fa-camera-rotate"></i> Change 3D View
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: Interactive 3D Vessel & Radar Simulation Viewport -->
+        <div class="lg:col-span-5">
+          <div class="border-2 border-stark bg-darknavy shadow-brutal relative overflow-hidden">
+            <!-- HUD Top Header -->
+            <div class="flex items-center justify-between px-3 py-2 bg-stark text-cream border-b-2 border-stark font-mono text-[10px] uppercase">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-skyblue animate-ping"></span>
+                <span class="font-bold text-skyblue">3D AIS TACTICAL RADAR</span>
+              </div>
+              <span class="text-gray-400">S-1 SAR / ORBIT 64</span>
+            </div>
+
+            <!-- Canvas Container -->
+            <div id="vessel-3d-canvas-container" class="relative w-full h-[320px] sm:h-[350px] cursor-grab active:cursor-grabbing bg-[#0a1622]">
+              <!-- Live Telemetry HUD -->
+              <div class="absolute top-2.5 left-2.5 z-10 pointer-events-none font-mono text-[10px] text-cream bg-stark/90 px-2.5 py-1.5 border border-stark shadow-sm">
+                <div>VESSEL: <span class="text-skyblue font-bold">MV SEAMARINER</span></div>
+                <div>SPEED: <span class="text-emerald-400">14.2 KTS</span> | HDG: <span class="text-amber-400">042°</span></div>
+                <div>STATUS: <span class="text-red-400 font-bold">SPILL CORRELATED</span></div>
+              </div>
+
+              <!-- Interaction Hint -->
+              <div class="absolute bottom-2.5 right-2.5 z-10 pointer-events-none font-mono text-[9px] text-gray-200 bg-stark/90 px-2 py-1 border border-stark">
+                <i class="fa-solid fa-hand-pointer mr-1 text-skyblue"></i> DRAG TO ROTATE 3D
+              </div>
+            </div>
+
+            <!-- HUD Bottom Status Bar -->
+            <div class="px-3 py-1.5 bg-cream text-stark border-t-2 border-stark font-mono text-[10px] flex items-center justify-between">
+              <span class="flex items-center gap-1.5 text-emerald-700 font-bold">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 60 FPS SIMULATION
+              </span>
+              <span class="text-gray-600 font-bold uppercase">SENTINEL-1 SAR BEAM ACTIVE</span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Editorial Title -->
-      <h1 class="font-syne font-extrabold text-3xl sm:text-6xl lg:text-7xl leading-tight sm:leading-none text-stark tracking-tight">
-        THE OCEAN IS <span class="font-serif italic font-normal text-darknavy underline decoration-skyblue decoration-4">WATCHING.</span>
-      </h1>
-
-      <p class="mt-4 font-body text-base sm:text-lg text-slatebody max-w-3xl leading-relaxed">
-        Leveraging Sentinel-1 Synthetic Aperture Radar (SAR) imagery to automatically detect marine oil slicks, combined with spatio-temporal AIS trajectory tracking to surface ranked investigation candidates for review.
-      </p>
-
       <!-- Metric Cards -->
-      <div class="aq-metric-grid grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6 sm:mt-8">
+      <div class="aq-metric-grid grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-8">
 
         <div class="aq-metric-card">
           <div class="font-mono text-xs font-bold text-gray-500 uppercase">Active Slick Plumes</div>
           <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1">07</div>
-          <div class="font-mono text-[11px] text-emerald-600 mt-1"><i class="fa-solid fa-arrow-up"></i> 2 new in Red Sea</div>
+          <div class="font-mono text-[11px] text-emerald-600 mt-1"><i class="fa-solid fa-arrow-up"></i> 2 new in Red Sea
+          </div>
         </div>
 
         <div class="aq-metric-card">
           <div class="font-mono text-xs font-bold text-gray-500 uppercase">Monitored Area</div>
-          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-darknavy mt-1">1,450<span class="text-lg text-skyblue font-mono">km²</span></div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-darknavy mt-1">1,450<span
+              class="text-lg text-skyblue font-mono">km²</span></div>
           <div class="font-mono text-[11px] text-gray-600 mt-1">24/7 Radar Surveillance</div>
         </div>
 
@@ -152,7 +231,8 @@
 
         <div class="aq-metric-card">
           <div class="font-mono text-xs font-bold text-gray-500 uppercase">Attribution Confidence</div>
-          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1">99.8<span class="text-lg font-mono">%</span></div>
+          <div class="font-syne font-extrabold text-3xl sm:text-4xl text-stark mt-1">99.8<span
+              class="text-lg font-mono">%</span></div>
           <div class="font-mono text-[11px] text-emerald-600 mt-1">Validated by ML Engine</div>
         </div>
 
@@ -164,15 +244,22 @@
   <!-- =====================================================
        MARQUEE TICKER RIBBON
        ===================================================== -->
-  <div class="bg-stark text-cream border-b-2 border-stark overflow-hidden py-2.5 font-mono text-xs uppercase font-bold tracking-wider">
+  <div
+    class="bg-stark text-cream border-b-2 border-stark overflow-hidden py-2.5 font-mono text-xs uppercase font-bold tracking-wider">
     <div class="animate-marquee whitespace-nowrap">
-      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SATELLITE SAR PASS COMPLETE: PERSIA GULF 04:32 UTC</span>
-      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> HIGH PROBABILITY SPILL DETECTED (LAT 14.3 N, LONG 42.1 E)</span>
-      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> AIS TRAJECTORY CORRELATION MATCH: MV SEAMARINER (IMO 9876543)</span>
-      <span class="mx-6"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i> DEMO ALERT SIMULATED — INVESTIGATOR REVIEW QUEUED</span>
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SATELLITE SAR PASS
+        COMPLETE: PERSIA GULF 04:32 UTC</span>
+      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> HIGH PROBABILITY SPILL
+        DETECTED (LAT 14.3 N, LONG 42.1 E)</span>
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> AIS TRAJECTORY
+        CORRELATION MATCH: MV SEAMARINER (IMO 9876543)</span>
+      <span class="mx-6"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i> DEMO ALERT SIMULATED —
+        INVESTIGATOR REVIEW QUEUED</span>
       <!-- Duplicate spans for seamless loop -->
-      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SATELLITE SAR PASS COMPLETE: PERSIA GULF 04:32 UTC</span>
-      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> HIGH PROBABILITY SPILL DETECTED (LAT 14.3 N, LONG 42.1 E)</span>
+      <span class="mx-6 text-skyblue"><i class="fa-solid fa-circle text-[8px] align-middle mr-2"></i> SATELLITE SAR PASS
+        COMPLETE: PERSIA GULF 04:32 UTC</span>
+      <span class="mx-6"><i class="fa-solid fa-triangle-exclamation text-amber-400 mr-2"></i> HIGH PROBABILITY SPILL
+        DETECTED (LAT 14.3 N, LONG 42.1 E)</span>
     </div>
   </div>
 
@@ -190,12 +277,15 @@
         <div class="aq-map-wrapper">
 
           <!-- Map Header Bar -->
-          <div class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
+          <div
+            class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
             <div class="flex items-center space-x-2">
               <span class="w-3 h-3 bg-skyblue inline-block border border-white"></span>
               <span class="font-bold tracking-wider">LIVE SATELLITE RADAR &amp; AIS MAP</span>
             </div>
-            <button id="btn-fullscreen-map" class="border border-cream/40 px-2 py-1 hover:bg-skyblue hover:text-stark hover:border-stark transition-colors" title="Expand full view">
+            <button id="btn-fullscreen-map"
+              class="border border-cream/40 px-2 py-1 hover:bg-skyblue hover:text-stark hover:border-stark transition-colors"
+              title="Expand full view">
               <i class="fa-solid fa-expand"></i>
             </button>
           </div>
@@ -204,7 +294,8 @@
           <div id="map" class="flex-grow w-full h-full"></div>
 
           <!-- Map Footer Legend -->
-          <div class="border-t-2 border-stark bg-cream px-4 py-2 flex items-center justify-between font-mono text-xs text-stark">
+          <div
+            class="border-t-2 border-stark bg-cream px-4 py-2 flex items-center justify-between font-mono text-xs text-stark">
             <div class="font-bold flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> SAR + AIS LAYERS SYNCED
             </div>
@@ -212,9 +303,15 @@
 
         </div>
 
-        <button id="btn-live-ais-radar" class="w-full mt-1 bg-skyblue text-stark border-2 border-stark shadow-brutal font-mono text-xs font-bold uppercase tracking-wider py-2 flex items-center justify-center gap-2 hover:bg-sky-400 transition-all">
+        <button id="btn-live-ais-radar"
+          class="w-full mt-1 bg-skyblue text-stark border-2 border-stark shadow-brutal font-mono text-xs font-bold uppercase tracking-wider py-2 flex items-center justify-center gap-2 hover:bg-sky-400 transition-all cursor-pointer">
           <i class="fa-solid fa-satellite-dish"></i> Live AIS Radar
         </button>
+
+        <a href="/attribution-report/ais-attribution.html"
+          class="w-full mt-2 bg-darknavy text-cream border-2 border-stark shadow-brutal font-mono text-xs font-bold uppercase tracking-wider py-2 flex items-center justify-center gap-2 hover:bg-slatebody transition-all text-center">
+          <i class="fa-solid fa-file-csv text-skyblue"></i> Upload AIS CSV &amp; Rank Candidate Ships
+        </a>
       </div>
 
 
@@ -225,11 +322,14 @@
         <div class="border-2 border-stark bg-white p-5 shadow-brutal">
           <div class="flex items-center justify-between border-b-2 border-stark pb-3 mb-4">
             <span class="font-mono text-xs font-bold uppercase text-gray-500">Highest-Ranked Candidate</span>
-            <span class="bg-red-500 text-white font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">Attribution Confidence 94%</span>
+            <span
+              class="bg-red-500 text-white font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">Attribution
+              Confidence 94%</span>
           </div>
 
           <div class="flex items-start space-x-4">
-            <div class="w-16 h-16 bg-darknavy border-2 border-stark flex items-center justify-center text-cream shrink-0">
+            <div
+              class="w-16 h-16 bg-darknavy border-2 border-stark flex items-center justify-center text-cream shrink-0">
               <i class="fa-solid fa-ship text-2xl text-skyblue"></i>
             </div>
             <div>
@@ -254,7 +354,8 @@
             </div>
           </div>
 
-          <button id="btn-open-dossier" class="w-full mt-4 bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-2.5 shadow-brutal hover:bg-sky-400 transition-all">
+          <button id="btn-open-dossier"
+            class="w-full mt-4 bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-2.5 shadow-brutal hover:bg-sky-400 transition-all">
             <i class="fa-solid fa-file-pdf mr-1.5"></i> View Full Incident Dossier
           </button>
         </div>
@@ -262,7 +363,8 @@
 
         <!-- INCIDENT ALERT STREAM -->
         <div class="border-2 border-stark bg-white p-5 shadow-brutal">
-          <div class="font-mono text-xs font-bold uppercase text-stark border-b-2 border-stark pb-2 mb-3 flex items-center justify-between">
+          <div
+            class="font-mono text-xs font-bold uppercase text-stark border-b-2 border-stark pb-2 mb-3 flex items-center justify-between">
             <span><i class="fa-solid fa-bell text-amber-500 mr-1.5"></i> Incident Alert Stream</span>
             <span class="text-[10px] text-gray-500">REALTIME</span>
           </div>
@@ -281,11 +383,14 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 mb-4 border-b-2 border-stark gap-4">
         <div>
           <h2 class="font-syne font-bold text-2xl text-stark">Vessel Trajectory Correlation Matrix</h2>
-          <p class="font-mono text-xs text-gray-600 mt-0.5">Spatio-temporal alignment between oil slick drift models and AIS historical coordinates.</p>
+          <p class="font-mono text-xs text-gray-600 mt-0.5">Spatio-temporal alignment between oil slick drift models and
+            AIS historical coordinates.</p>
         </div>
         <div class="aq-search-row w-full sm:w-auto">
-          <input type="text" id="vessel-search" placeholder="Search IMO / Vessel..." class="border-2 border-stark px-3 py-1.5 font-mono text-xs bg-cream focus:outline-none focus:bg-white w-full sm:w-48">
-          <button class="bg-stark text-cream px-3 py-1.5 font-mono text-xs font-bold border-2 border-stark shrink-0"><i class="fa-solid fa-filter"></i></button>
+          <input type="text" id="vessel-search" placeholder="Search IMO / Vessel..."
+            class="border-2 border-stark px-3 py-1.5 font-mono text-xs bg-cream focus:outline-none focus:bg-white w-full sm:w-48">
+          <button class="bg-stark text-cream px-3 py-1.5 font-mono text-xs font-bold border-2 border-stark shrink-0"><i
+              class="fa-solid fa-filter"></i></button>
         </div>
       </div>
 
@@ -312,10 +417,12 @@
               <td class="p-3" data-label="Last AIS Pos">14.3° N, 42.1° E</td>
               <td class="p-3" data-label="Speed (kts)">12.4</td>
               <td class="p-3" data-label="Confidence">
-                <span class="bg-red-500 text-white font-bold px-2 py-0.5 border border-stark font-mono text-xs">94% HIGH</span>
+                <span class="bg-red-500 text-white font-bold px-2 py-0.5 border border-stark font-mono text-xs">94%
+                  HIGH</span>
               </td>
               <td class="p-3" data-label="Action">
-                <button id="btn-details-1" class="bg-skyblue text-stark px-2.5 py-1 border border-stark font-bold hover:bg-sky-300 font-mono text-xs">DETAILS</button>
+                <button id="btn-details-1"
+                  class="bg-skyblue text-stark px-2.5 py-1 border border-stark font-bold hover:bg-sky-300 font-mono text-xs">DETAILS</button>
               </td>
             </tr>
             <tr>
@@ -326,10 +433,12 @@
               <td class="p-3" data-label="Last AIS Pos">14.8° N, 42.0° E</td>
               <td class="p-3" data-label="Speed (kts)">14.1</td>
               <td class="p-3" data-label="Confidence">
-                <span class="bg-amber-400 text-stark font-bold px-2 py-0.5 border border-stark font-mono text-xs">68% MED</span>
+                <span class="bg-amber-400 text-stark font-bold px-2 py-0.5 border border-stark font-mono text-xs">68%
+                  MED</span>
               </td>
               <td class="p-3" data-label="Action">
-                <button id="btn-details-2" class="bg-cream text-stark px-2.5 py-1 border border-stark font-bold hover:bg-gray-200 font-mono text-xs">DETAILS</button>
+                <button id="btn-details-2"
+                  class="bg-cream text-stark px-2.5 py-1 border border-stark font-bold hover:bg-gray-200 font-mono text-xs">DETAILS</button>
               </td>
             </tr>
             <tr>
@@ -340,10 +449,12 @@
               <td class="p-3" data-label="Last AIS Pos">14.3° N, 42.0° E</td>
               <td class="p-3" data-label="Speed (kts)">08.2</td>
               <td class="p-3" data-label="Confidence">
-                <span class="bg-gray-200 text-stark font-bold px-2 py-0.5 border border-stark font-mono text-xs">53% LOW</span>
+                <span class="bg-gray-200 text-stark font-bold px-2 py-0.5 border border-stark font-mono text-xs">53%
+                  LOW</span>
               </td>
               <td class="p-3" data-label="Action">
-                <button id="btn-details-3" class="bg-cream text-stark px-2.5 py-1 border border-stark font-bold hover:bg-gray-200 font-mono text-xs">DETAILS</button>
+                <button id="btn-details-3"
+                  class="bg-cream text-stark px-2.5 py-1 border border-stark font-bold hover:bg-gray-200 font-mono text-xs">DETAILS</button>
               </td>
             </tr>
           </tbody>
@@ -359,10 +470,14 @@
       <div class="flex flex-col md:flex-row md:items-center justify-between pb-4 mb-4 border-b-2 border-stark gap-4">
         <div>
           <h2 class="font-syne font-bold text-2xl text-stark">Latest Oil Spill Report</h2>
-          <p class="font-mono text-xs text-gray-600 mt-0.5">Latest confirmed spill events recorded by satellite telemetry.</p>
+          <p class="font-mono text-xs text-gray-600 mt-0.5">Latest confirmed spill events recorded by satellite
+            telemetry.</p>
         </div>
-        <span id="news-status-badge" class="bg-emerald-900 text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase w-fit">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#34d399;margin-right:4px;"></span> SYSTEM LOG
+        <span id="news-status-badge"
+          class="bg-emerald-900 text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase w-fit">
+          <span
+            style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#34d399;margin-right:4px;"></span>
+          SYSTEM LOG
         </span>
       </div>
 
@@ -374,34 +489,51 @@
         <!-- Record 1 -->
         <div style="border:2px solid #111111;background:#ffffff;">
           <div class="aq-incident-grid">
-            <div class="aq-incident-id-col" style="background:#0F2537;color:#F6F4EE;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid #111;">
+            <div class="aq-incident-id-col"
+              style="background:#0F2537;color:#F6F4EE;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid #111;">
               <div>
-                <div style="font-family:'Space Mono',monospace;font-size:10px;color:#00A8E8;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:4px;">
+                <div
+                  style="font-family:'Space Mono',monospace;font-size:10px;color:#00A8E8;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:4px;">
                   <i class="fa-solid fa-satellite" style="font-size:9px;"></i> Report ID
                 </div>
-                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-top:4px;">#OS-260901</div>
+                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-top:4px;">#OS-260901
+                </div>
               </div>
-              <div style="font-family:'Space Mono',monospace;font-size:11px;color:#cbd5e1;margin-top:12px;">Automated Detection</div>
+              <div style="font-family:'Space Mono',monospace;font-size:11px;color:#cbd5e1;margin-top:12px;">Automated
+                Detection</div>
             </div>
             <div class="aq-incident-area-col" style="border-bottom:2px solid #111;padding:12px;">
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Est. Slick Area</div>
-              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:#111111;margin-top:4px;">2.19 km²</div>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:4px;">SAR Model Est.</div>
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">
+                Est. Slick Area</div>
+              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:#111111;margin-top:4px;">
+                2.19 km²</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:4px;">SAR Model
+                Est.</div>
             </div>
             <div class="aq-incident-conf-col" style="border-bottom:2px solid #111;padding:12px;">
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Detection Confidence</div>
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">
+                Detection Confidence</div>
               <div style="margin-top:6px;">
-                <span style="background:#ef4444;color:#ffffff;font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:2px 8px;border:1px solid #111111;">High</span>
+                <span
+                  style="background:#ef4444;color:#ffffff;font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:2px 8px;border:1px solid #111111;">High</span>
               </div>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;">Gulf of America</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;">Gulf of
+                America</div>
             </div>
-            <div style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;">
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Satellite Telemetry</div>
-              <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:#2B2D42;margin-top:4px;line-height:1.6;flex-grow:1;">
+            <div
+              style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;">
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">
+                Satellite Telemetry</div>
+              <p
+                style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:#2B2D42;margin-top:4px;line-height:1.6;flex-grow:1;">
                 <strong>Sensor:</strong> Sentinel-2C<br>
                 <strong>Image Date:</strong> 8 Sep 2026
               </p>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;">
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;">
                 <i class="fa-regular fa-clock" style="margin-right:4px;"></i>Reported: 9 Sep 2026
               </div>
             </div>
@@ -413,34 +545,51 @@
         <!-- Record 2 -->
         <div style="border:2px solid #111111;background:#ffffff;">
           <div class="aq-incident-grid">
-            <div class="aq-incident-id-col" style="background:#0F2537;color:#F6F4EE;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid #111;">
+            <div class="aq-incident-id-col"
+              style="background:#0F2537;color:#F6F4EE;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;border-bottom:2px solid #111;">
               <div>
-                <div style="font-family:'Space Mono',monospace;font-size:10px;color:#00A8E8;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:4px;">
+                <div
+                  style="font-family:'Space Mono',monospace;font-size:10px;color:#00A8E8;font-weight:700;text-transform:uppercase;display:flex;align-items:center;gap:4px;">
                   <i class="fa-solid fa-satellite" style="font-size:9px;"></i> Report ID
                 </div>
-                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-top:4px;">#OS-260902</div>
+                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;margin-top:4px;">#OS-260902
+                </div>
               </div>
-              <div style="font-family:'Space Mono',monospace;font-size:11px;color:#cbd5e1;margin-top:12px;">Automated Detection</div>
+              <div style="font-family:'Space Mono',monospace;font-size:11px;color:#cbd5e1;margin-top:12px;">Automated
+                Detection</div>
             </div>
             <div class="aq-incident-area-col" style="border-bottom:2px solid #111;padding:12px;">
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Est. Slick Area</div>
-              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:#111111;margin-top:4px;">0.33 km²</div>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:4px;">SAR Model Est.</div>
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">
+                Est. Slick Area</div>
+              <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1.2rem;color:#111111;margin-top:4px;">
+                0.33 km²</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:4px;">SAR Model
+                Est.</div>
             </div>
             <div class="aq-incident-conf-col" style="border-bottom:2px solid #111;padding:12px;">
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Detection Confidence</div>
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">
+                Detection Confidence</div>
               <div style="margin-top:6px;">
-                <span style="background:#fbbf24;color:#111111;font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:2px 8px;border:1px solid #111111;">Medium-High</span>
+                <span
+                  style="background:#fbbf24;color:#111111;font-family:'Space Mono',monospace;font-weight:700;font-size:13px;padding:2px 8px;border:1px solid #111111;">Medium-High</span>
               </div>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;">Gulf of America</div>
+              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;">Gulf of
+                America</div>
             </div>
-            <div style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;">
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">Satellite Telemetry</div>
-              <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:#2B2D42;margin-top:4px;line-height:1.6;flex-grow:1;">
+            <div
+              style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;min-height:100px;">
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700;">
+                Satellite Telemetry</div>
+              <p
+                style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;color:#2B2D42;margin-top:4px;line-height:1.6;flex-grow:1;">
                 <strong>Sensor:</strong> Landsat 8<br>
                 <strong>Image Date:</strong> 8 Sep 2026
               </p>
-              <div style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;">
+              <div
+                style="font-family:'Space Mono',monospace;font-size:10px;color:#9ca3af;margin-top:8px;border-top:1px solid #e5e7eb;padding-top:8px;">
                 <i class="fa-regular fa-clock" style="margin-right:4px;"></i>Reported: 8 Sep 2026
               </div>
             </div>
@@ -466,7 +615,7 @@
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs">
       <div>
         <span class="font-syne font-bold text-lg text-white">AquaTrace</span>
-        <span class="text-gray-400 ml-2">| SIH26143 Satellite &amp; AIS Correlation System</span>
+        <span class="text-gray-400 ml-2">| Satellite &amp; AIS Correlation System</span>
       </div>
       <div class="text-gray-400">Built with Cream, Stark Black, Dark Navy &amp; Sky Blue Architecture</div>
     </div>
@@ -481,16 +630,20 @@
        Note: Uses style.display toggle (not Tailwind 'hidden') so that
        display:flex layout works correctly — known Tailwind CDN JIT limitation.
        ===================================================== -->
-  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(17,17,17,0.82);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;padding:1rem;">
+  <div id="modal"
+    style="display:none;position:fixed;inset:0;background:rgba(17,17,17,0.82);backdrop-filter:blur(4px);z-index:50;align-items:center;justify-content:center;padding:1rem;">
     <div class="aq-modal-inner">
 
       <div class="flex justify-between items-start border-b-2 border-stark pb-4 mb-4">
         <div>
-          <span class="bg-darknavy text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">DEMO DOSSIER</span>
+          <span
+            class="bg-darknavy text-skyblue font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase">DEMO
+            DOSSIER</span>
           <h2 class="font-syne font-extrabold text-2xl text-stark mt-1">Incident Analysis Report #1734A</h2>
           <p class="font-mono text-xs text-gray-600">Location: Red Sea Transit Corridor | Date: March 15, 2026</p>
         </div>
-        <button id="btn-close-modal" class="w-8 h-8 bg-stark text-cream font-bold border-2 border-stark hover:bg-red-600">✕</button>
+        <button id="btn-close-modal"
+          class="w-8 h-8 bg-stark text-cream font-bold border-2 border-stark hover:bg-red-600">✕</button>
       </div>
 
       <div class="space-y-4 font-mono text-xs">
@@ -510,18 +663,22 @@
         <div class="border-2 border-stark p-4 bg-white">
           <h4 class="font-bold text-sm text-stark border-b border-stark pb-2 mb-2">AIS Trajectory Analysis Log</h4>
           <p class="text-slatebody leading-relaxed">
-            Spatio-temporal back-projection places MV SEAMARINER near the apex origin of the radar slick outline at 03:45 UTC, traveling at 12.4 knots. Wind drift models align 98% with the observed surface oil spread angle.
+            Spatio-temporal back-projection places MV SEAMARINER near the apex origin of the radar slick outline at
+            03:45 UTC, traveling at 12.4 knots. Wind drift models align 98% with the observed surface oil spread angle.
           </p>
         </div>
 
         <div class="border-2 border-stark p-3 bg-cream text-[11px] text-gray-600">
-          This result is an evidence-ranking output and requires human review. Ranking reflects available evidence and is not a determination of legal responsibility.
+          This result is an evidence-ranking output and requires human review. Ranking reflects available evidence and
+          is not a determination of legal responsibility.
         </div>
       </div>
 
       <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2 font-mono text-xs font-bold">
-        <button id="btn-close-modal-footer" class="px-4 py-2 border-2 border-stark bg-white text-stark w-full sm:w-auto">Close Window</button>
-        <button id="btn-export-dossier" class="px-4 py-2 border-2 border-stark bg-skyblue text-stark shadow-brutal w-full sm:w-auto">
+        <button id="btn-close-modal-footer"
+          class="px-4 py-2 border-2 border-stark bg-white text-stark w-full sm:w-auto">Close Window</button>
+        <button id="btn-export-dossier"
+          class="px-4 py-2 border-2 border-stark bg-skyblue text-stark shadow-brutal w-full sm:w-auto">
           <i class="fa-solid fa-download mr-1"></i> Export Dossier (Demo)
         </button>
       </div>
@@ -534,17 +691,21 @@
        FULLSCREEN MAP OVERLAY
        ===================================================== -->
   <div id="fullscreen-map-overlay">
-    <div class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
+    <div
+      class="border-b-2 border-stark bg-stark text-cream px-4 py-3 flex items-center justify-between font-mono text-xs">
       <div class="flex items-center space-x-2">
         <span class="w-3 h-3 bg-skyblue inline-block border border-white"></span>
         <span class="font-bold tracking-wider">LIVE SATELLITE RADAR &amp; AIS MAP — FULL VIEW</span>
       </div>
-      <button id="btn-close-fullscreen" class="border border-cream/40 px-2 py-1 hover:bg-skyblue hover:text-stark hover:border-stark transition-colors" title="Close full view">
+      <button id="btn-close-fullscreen"
+        class="border border-cream/40 px-2 py-1 hover:bg-skyblue hover:text-stark hover:border-stark transition-colors"
+        title="Close full view">
         <i class="fa-solid fa-compress mr-1"></i> Close
       </button>
     </div>
     <div id="map-full" class="flex-grow w-full h-full"></div>
-    <div class="border-t-2 border-stark bg-cream px-4 py-2 flex items-center justify-between font-mono text-xs text-stark">
+    <div
+      class="border-t-2 border-stark bg-cream px-4 py-2 flex items-center justify-between font-mono text-xs text-stark">
       <div class="font-bold">Coordinates: 14.300° N, 42.180° E</div>
       <div class="text-gray-500 uppercase">DEMO DATA — LIVE AIS FEED NOT YET CONNECTED</div>
     </div>
@@ -557,6 +718,10 @@
        ===================================================== -->
   <!-- Leaflet JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <!-- Three.js (3D WebGL Maritime Simulation) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="js/vessel3d.js"></script>
 
   <!-- AquaTrace modules -->
   <script src="js/config.js"></script>
@@ -585,4 +750,5 @@
   </script>
 
 </body>
+
 </html>

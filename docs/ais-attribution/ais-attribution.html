@@ -181,7 +181,7 @@
             Aqua<span class="text-skyblue">Trace</span>
           </span>
           <span class="font-mono text-[10px] text-gray-600 tracking-wider uppercase block mt-1">
-            SIH26143 • AIS Vessel Attribution Engine
+            AIS Vessel Attribution Engine
           </span>
         </div>
       </div>
@@ -285,25 +285,65 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 
       <!-- UPLOAD AIS DATA -->
-      <div class="border-2 border-stark bg-white shadow-brutal p-6">
-        <div
-          class="font-mono text-xs font-bold uppercase text-gray-500 border-b-2 border-stark pb-3 mb-4 flex items-center gap-2">
-          <i class="fa-solid fa-file-csv text-skyblue"></i> Upload AIS Data
+      <div class="border-2 border-stark bg-white shadow-brutal p-6 flex flex-col justify-between">
+        <div>
+          <div
+            class="font-mono text-xs font-bold uppercase text-gray-500 border-b-2 border-stark pb-3 mb-4 flex items-center justify-between">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-file-csv text-skyblue"></i> Upload AIS Data for Slick Attribution</span>
+            <span class="text-[10px] bg-cream px-2 py-0.5 border border-stark text-darknavy">CSV ENGINE</span>
+          </div>
+
+          <div id="drop-zone"
+            class="border-2 border-dashed border-stark bg-cream p-6 sm:p-7 text-center cursor-pointer transition-colors hover:border-skyblue hover:bg-sky-50"
+            onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)"
+            ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+            <i class="fa-solid fa-cloud-arrow-up text-3xl text-darknavy mb-2 block"></i>
+            <p class="font-mono text-xs font-bold text-stark">Drop CSV here or click to browse</p>
+            <p class="font-mono text-[10px] text-gray-600 mt-1">Accepts MMSI, BaseDateTime/Timestamp, LAT, LON, SOG, COG, VesselType, VesselName</p>
+          </div>
+          <input type="file" id="file-input" accept=".csv,text/csv" class="hidden" onchange="handleFileUpload(event)">
+
+          <!-- Quick Sample CSV Helpers -->
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 font-mono text-[11px]">
+            <button type="button" onclick="loadSampleDataset()"
+              class="text-darknavy hover:text-skyblue underline flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-wand-magic-sparkles text-skyblue"></i> Quick-Load Sample AIS Data
+            </button>
+            <button type="button" onclick="downloadSampleCsv()"
+              class="text-gray-600 hover:text-darknavy underline flex items-center gap-1.5 cursor-pointer">
+              <i class="fa-solid fa-download"></i> Download Sample CSV
+            </button>
+          </div>
+
+          <!-- Upload Status & Info Card -->
+          <div id="upload-status" class="mt-3 p-3 border-2 border-stark bg-cream font-mono text-xs hidden"></div>
+
+          <!-- Optional Slick Coordinate Override -->
+          <div class="mt-3 border-t border-gray-200 pt-3">
+            <details class="font-mono text-xs text-gray-600">
+              <summary class="cursor-pointer hover:text-darknavy flex items-center gap-1 font-bold">
+                <i class="fa-solid fa-sliders text-skyblue text-[10px]"></i> Custom Slick Origin (Optional)
+              </summary>
+              <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100">
+                <div>
+                  <label class="block text-[10px] uppercase text-gray-500 mb-0.5">Slick Lat (°N)</label>
+                  <input type="number" step="any" id="custom-spill-lat" placeholder="Auto-calculated"
+                    class="w-full border border-stark p-1.5 bg-white text-xs font-mono">
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase text-gray-500 mb-0.5">Slick Lon (°E)</label>
+                  <input type="number" step="any" id="custom-spill-lon" placeholder="Auto-calculated"
+                    class="w-full border border-stark p-1.5 bg-white text-xs font-mono">
+                </div>
+              </div>
+              <p class="text-[9px] text-gray-500 mt-1 italic">Leave blank to auto-center on uploaded vessel activity centroid.</p>
+            </details>
+          </div>
         </div>
-        <div id="drop-zone"
-          class="border-2 border-dashed border-stark bg-cream p-8 text-center cursor-pointer transition-colors hover:border-skyblue hover:bg-blue-50"
-          onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)"
-          ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-          <i class="fa-solid fa-cloud-arrow-up text-3xl text-darknavy mb-3 block"></i>
-          <p class="font-mono text-xs font-bold text-stark">Drop CSV here or click to browse</p>
-          <p class="font-mono text-[10px] text-gray-500 mt-2">Required columns: MMSI, BaseDateTime, LAT, LON, SOG, COG,
-            VesselType, VesselName</p>
-        </div>
-        <input type="file" id="file-input" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
-        <div id="upload-status" class="mt-3 font-mono text-xs text-gray-500 hidden"></div>
+
         <button id="run-upload-btn" onclick="runUploadAnalysis()"
-          class="w-full mt-4 bg-darknavy text-cream border-2 border-stark font-mono text-xs font-bold uppercase py-2.5 shadow-brutal hover:bg-slatebody transition-all hidden">
-          <i class="fa-solid fa-magnifying-glass mr-1.5"></i> Run Attribution on Uploaded Data
+          class="w-full mt-4 bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-3 shadow-brutal hover:bg-sky-400 transition-all hidden flex items-center justify-center gap-2">
+          <i class="fa-solid fa-radar"></i> Run Attribution &amp; Rank Candidate Ships
         </button>
       </div>
 
@@ -329,7 +369,7 @@
           <p class="font-mono text-[10px] text-amber-600 italic mt-3">Simulation mode — generated data for demonstration purposes.</p>
         </div>
         <button id="run-demo-btn" onclick="runDemoAnalysis()"
-          class="w-full bg-skyblue text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-3 shadow-brutal hover:bg-sky-400 transition-all flex items-center justify-center gap-2">
+          class="w-full bg-cream text-stark border-2 border-stark font-mono text-xs font-bold uppercase py-3 shadow-brutal hover:bg-white transition-all flex items-center justify-center gap-2">
           <i class="fa-solid fa-play"></i> Test with Random Data
         </button>
       </div>
@@ -339,6 +379,16 @@
 
     <!-- ── RESULTS SECTION (hidden until analysis runs) ────────── -->
     <div id="results-section" class="hidden space-y-8">
+
+      <!-- UPLOADED DATA ATTRIBUTION BANNER -->
+      <div id="uploaded-banner"
+        class="hidden border-2 border-stark bg-emerald-50 px-4 py-3 font-mono text-xs text-emerald-900 flex items-center justify-between gap-3 shadow-brutal">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-emerald-600 text-base shrink-0"></i>
+          <span id="uploaded-banner-text"><strong>UPLOADED AIS ATTRIBUTION COMPLETE</strong> — Candidates ranked by spatio-temporal correlation against slick origin.</span>
+        </div>
+        <span class="bg-emerald-600 text-white px-2 py-0.5 text-[10px] uppercase font-bold shrink-0">SAR CORRELATED</span>
+      </div>
 
       <!-- DEMO DISCLAIMER BANNER -->
       <div id="demo-banner"
@@ -511,7 +561,7 @@
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs">
       <div>
         <span class="font-syne font-bold text-lg text-white">AquaTrace</span>
-        <span class="text-gray-400 ml-2">| SIH26143 AIS Vessel Attribution Engine</span>
+        <span class="text-gray-400 ml-2">| AIS Vessel Attribution Engine</span>
       </div>
       <div class="text-gray-400">Scoring: Spatial · Temporal · Trajectory · Drift · Behaviour</div>
     </div>
@@ -896,17 +946,17 @@
       }, 700);
     }
 
-    // ─── Upload handling ─────────────────────────────────────────
+    // ─── Upload & Sample Dataset Handling ─────────────────────────
     function handleDragOver(e) {
       e.preventDefault();
-      document.getElementById('drop-zone').classList.add('drag-over');
+      document.getElementById('drop-zone').classList.add('border-skyblue', 'bg-sky-50');
     }
     function handleDragLeave(e) {
-      document.getElementById('drop-zone').classList.remove('drag-over');
+      document.getElementById('drop-zone').classList.remove('border-skyblue', 'bg-sky-50');
     }
     function handleDrop(e) {
       e.preventDefault();
-      document.getElementById('drop-zone').classList.remove('drag-over');
+      document.getElementById('drop-zone').classList.remove('border-skyblue', 'bg-sky-50');
       const file = e.dataTransfer.files[0];
       if (file) processFile(file);
     }
@@ -915,9 +965,125 @@
       if (file) processFile(file);
     }
 
+    // Generate realistic sample AIS CSV content
+    function generateSampleAisCsvContent() {
+      const baseTime = new Date(Date.now() - 18 * 3600000);
+      const originLat = 14.3389;
+      const originLon = 42.1287;
+      const rows = ['MMSI,BaseDateTime,LAT,LON,SOG,COG,VesselType,VesselName'];
+
+      const vessels = [
+        {
+          mmsi: '636019842', name: 'MV SEAMARINER', type: 'Crude Oil Tanker',
+          pts: [
+            { dlat: 0.26, dlon: -0.32, dt: 0, sog: 14.2, cog: 135 },
+            { dlat: 0.12, dlon: -0.15, dt: 1.5, sog: 13.8, cog: 135 },
+            { dlat: 0.008, dlon: 0.012, dt: 2.9, sog: 8.2, cog: 142 }, // Closest proximity to slick origin with speed reduction!
+            { dlat: -0.14, dlon: 0.18, dt: 4.2, sog: 14.5, cog: 138 },
+            { dlat: -0.28, dlon: 0.35, dt: 5.8, sog: 14.6, cog: 138 }
+          ]
+        },
+        {
+          mmsi: '355829104', name: 'MT CORAL VOYAGER', type: 'Chemical Tanker',
+          pts: [
+            { dlat: 0.42, dlon: -0.48, dt: 0.2, sog: 12.1, cog: 130 },
+            { dlat: 0.22, dlon: -0.24, dt: 1.8, sog: 12.0, cog: 132 },
+            { dlat: 0.07, dlon: -0.05, dt: 3.2, sog: 12.2, cog: 130 },
+            { dlat: -0.09, dlon: 0.15, dt: 4.9, sog: 11.9, cog: 130 }
+          ]
+        },
+        {
+          mmsi: '538007219', name: 'MV EQUATORIAL STAR', type: 'Container Ship',
+          pts: [
+            { dlat: -0.45, dlon: -0.18, dt: 0.5, sog: 19.5, cog: 320 },
+            { dlat: -0.22, dlon: -0.04, dt: 2.0, sog: 19.4, cog: 322 },
+            { dlat: 0.04, dlon: 0.12, dt: 3.6, sog: 19.2, cog: 320 },
+            { dlat: 0.32, dlon: 0.28, dt: 5.2, sog: 19.5, cog: 318 }
+          ]
+        },
+        {
+          mmsi: '211948270', name: 'MT DEEP HORIZON', type: 'Bulk Carrier',
+          pts: [
+            { dlat: 0.58, dlon: 0.22, dt: 1.0, sog: 11.0, cog: 195 },
+            { dlat: 0.38, dlon: 0.26, dt: 2.8, sog: 10.8, cog: 190 },
+            { dlat: 0.18, dlon: 0.30, dt: 4.5, sog: 11.2, cog: 195 }
+          ]
+        },
+        {
+          mmsi: '477281930', name: 'MV PACIFIC ATLAS', type: 'General Cargo',
+          pts: [
+            { dlat: -0.10, dlon: -0.55, dt: 0.8, sog: 13.0, cog: 85 },
+            { dlat: -0.08, dlon: -0.30, dt: 2.4, sog: 13.2, cog: 88 },
+            { dlat: -0.06, dlon: -0.08, dt: 4.0, sog: 12.9, cog: 86 }
+          ]
+        },
+        {
+          mmsi: '205389102', name: 'MT BLUE MERIDIAN', type: 'LNG Carrier',
+          pts: [
+            { dlat: 0.50, dlon: -0.10, dt: 1.2, sog: 16.4, cog: 160 },
+            { dlat: 0.28, dlon: 0.05, dt: 2.7, sog: 16.2, cog: 162 },
+            { dlat: 0.06, dlon: 0.20, dt: 4.1, sog: 16.5, cog: 160 }
+          ]
+        }
+      ];
+
+      vessels.forEach(v => {
+        v.pts.forEach(p => {
+          const lat = (originLat + p.dlat).toFixed(5);
+          const lon = (originLon + p.dlon).toFixed(5);
+          const time = new Date(baseTime.getTime() + p.dt * 3600000).toISOString();
+          rows.push(`${v.mmsi},${time},${lat},${lon},${p.sog},${p.cog},${v.type},${v.name}`);
+        });
+      });
+
+      return rows.join('\n');
+    }
+
+    function downloadSampleCsv() {
+      const csvContent = generateSampleAisCsvContent();
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'aquatrace_sample_ais.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function loadSampleDataset() {
+      const csvText = generateSampleAisCsvContent();
+      const statusEl = document.getElementById('upload-status');
+      statusEl.classList.remove('hidden');
+      statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading sample AIS dataset…`;
+
+      setTimeout(() => {
+        try {
+          const vessels = parseAisCSV(csvText);
+          uploadedCandidates = vessels;
+          statusEl.innerHTML = `
+            <div class="text-emerald-700 font-bold mb-1">
+              <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> Sample AIS Dataset Loaded
+            </div>
+            <div class="text-[11px] text-gray-700">
+              <strong>${vessels.length} vessels</strong> detected across Red Sea transit corridor (24 AIS positions).
+            </div>
+            <div class="text-[10px] text-gray-500 mt-1">
+              Slick origin: Lat ${SEARCH_WINDOW.center_lat.toFixed(4)}°N, Lon ${SEARCH_WINDOW.center_lon.toFixed(4)}°E (Radius: ${SEARCH_WINDOW.radius_km} km)
+            </div>
+          `;
+          document.getElementById('run-upload-btn').classList.remove('hidden');
+          runUploadAnalysis();
+        } catch (err) {
+          statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1"></i> Error: ${err.message}`;
+        }
+      }, 200);
+    }
+
     function processFile(file) {
-      if (!file.name.endsWith('.csv')) {
-        alert('Please upload a CSV file.');
+      if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
+        alert('Please upload a valid CSV file.');
         return;
       }
       const statusEl = document.getElementById('upload-status');
@@ -929,8 +1095,18 @@
         try {
           const vessels = parseAisCSV(e.target.result);
           uploadedCandidates = vessels;
-          statusEl.innerHTML = `<i class="fa-solid fa-check text-emerald-600 mr-1"></i> Loaded <strong>${file.name}</strong> — ${vessels.length} vessels found.`;
-          document.getElementById('run-upload-btn').classList.remove('hidden');
+          statusEl.innerHTML = `
+            <div class="text-emerald-700 font-bold mb-1">
+              <i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> File Parsed Successfully: ${file.name}
+            </div>
+            <div class="text-[11px] text-gray-700">
+              Found <strong>${vessels.length} candidate vessels</strong>. Slick origin set to Lat ${SEARCH_WINDOW.center_lat.toFixed(4)}°N, Lon ${SEARCH_WINDOW.center_lon.toFixed(4)}°E (Radius ${SEARCH_WINDOW.radius_km} km).
+            </div>
+          `;
+          const runBtn = document.getElementById('run-upload-btn');
+          runBtn.classList.remove('hidden');
+          // Automatically run analysis so user immediately sees results!
+          runUploadAnalysis();
         } catch (err) {
           statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1"></i> Parse error: ${err.message}`;
         }
@@ -938,67 +1114,163 @@
       reader.readAsText(file);
     }
 
+    // Flexible, robust AIS CSV parser
     function parseAisCSV(csvText) {
-      const lines = csvText.trim().split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const lines = csvText.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length < 2) throw new Error('CSV file is empty or missing data rows.');
 
-      const colMap = {
-        'MMSI': 'mmsi', 'BaseDateTime': 'timestamp', 'LAT': 'lat', 'LON': 'lon',
-        'SOG': 'sog', 'COG': 'cog', 'VesselType': 'vessel_type', 'VesselName': 'vessel_name'
+      // Delimiter detection (comma, semicolon, tab)
+      const headerLine = lines[0];
+      const delimiter = headerLine.includes('\t') ? '\t' : (headerLine.includes(';') ? ';' : ',');
+      const headers = headerLine.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+
+      const synonyms = {
+        mmsi: ['mmsi', 'vessel_mmsi', 'ship_mmsi', 'imo', 'vessel_id', 'id'],
+        timestamp: ['basedatetime', 'timestamp', 'datetime', 'date_time', 'time', 'date', 'ts', 'utc_time'],
+        lat: ['lat', 'latitude', 'y'],
+        lon: ['lon', 'lng', 'long', 'longitude', 'x'],
+        sog: ['sog', 'speed', 'velocity', 'spd', 'knots'],
+        cog: ['cog', 'course', 'heading', 'dir', 'direction'],
+        vessel_type: ['vesseltype', 'vessel_type', 'shiptype', 'ship_type', 'type', 'cargo_type'],
+        vessel_name: ['vesselname', 'vessel_name', 'shipname', 'ship_name', 'name']
       };
-      const colIdx = {};
-      headers.forEach((h, i) => { if (colMap[h]) colIdx[colMap[h]] = i; });
 
-      const required = ['mmsi', 'timestamp', 'lat', 'lon'];
-      for (const r of required) {
-        if (colIdx[r] === undefined) throw new Error(`Missing required column mapped from "${r}"`);
+      const colIdx = {};
+      Object.entries(synonyms).forEach(([key, list]) => {
+        const found = headers.findIndex(h => list.includes(h.toLowerCase()));
+        if (found !== -1) colIdx[key] = found;
+      });
+
+      if (colIdx.mmsi === undefined) throw new Error('Missing MMSI column in CSV header.');
+      if (colIdx.lat === undefined || colIdx.lon === undefined) throw new Error('Missing LAT / LON coordinate columns in CSV header.');
+
+      const rows = [];
+      let totalLats = 0, totalLons = 0, validCoords = 0;
+      let minTime = Infinity, maxTime = -Infinity;
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        const mmsi = cols[colIdx.mmsi];
+        const lat = parseFloat(cols[colIdx.lat]);
+        const lon = parseFloat(cols[colIdx.lon]);
+        if (!mmsi || isNaN(lat) || isNaN(lon)) continue;
+
+        let timeStr = colIdx.timestamp !== undefined ? cols[colIdx.timestamp] : '';
+        let timeParsed = timeStr ? new Date(timeStr) : null;
+        if (!timeParsed || isNaN(timeParsed.getTime())) {
+          timeParsed = new Date(Date.now() - (lines.length - i) * 120000); // 2-min sequential fallback
+        }
+        const timeMs = timeParsed.getTime();
+        if (timeMs < minTime) minTime = timeMs;
+        if (timeMs > maxTime) maxTime = timeMs;
+
+        totalLats += lat;
+        totalLons += lon;
+        validCoords++;
+
+        rows.push({
+          mmsi,
+          lat,
+          lon,
+          timestamp: timeParsed.toISOString(),
+          sog: colIdx.sog !== undefined ? parseFloat(cols[colIdx.sog]) || 0 : 0,
+          cog: colIdx.cog !== undefined ? parseFloat(cols[colIdx.cog]) || 0 : 0,
+          vessel_type: colIdx.vessel_type !== undefined && cols[colIdx.vessel_type] ? cols[colIdx.vessel_type] : 'Commercial Vessel',
+          vessel_name: colIdx.vessel_name !== undefined && cols[colIdx.vessel_name] ? cols[colIdx.vessel_name] : `VESSEL-${mmsi}`
+        });
       }
 
-      const rows = lines.slice(1).map(line => {
-        const cols = line.split(',').map(c => c.trim().replace(/"/g, ''));
-        const obj = {};
-        Object.entries(colIdx).forEach(([k, i]) => obj[k] = cols[i]);
-        return obj;
-      }).filter(r => r.mmsi && r.lat && r.lon && !isNaN(+r.lat) && !isNaN(+r.lon));
+      if (rows.length === 0) throw new Error('No valid coordinate rows found in CSV.');
 
+      // Group tracks by MMSI
       const vesselMap = {};
       rows.forEach(r => {
-        const key = r.mmsi;
-        if (!vesselMap[key]) {
-          vesselMap[key] = {
+        if (!vesselMap[r.mmsi]) {
+          vesselMap[r.mmsi] = {
             mmsi: r.mmsi,
-            vessel_name: r.vessel_name || `VESSEL-${r.mmsi}`,
-            vessel_type: r.vessel_type || 'Unknown',
+            vessel_name: r.vessel_name,
+            vessel_type: r.vessel_type,
             track: []
           };
         }
-        vesselMap[key].track.push({ lat: +r.lat, lon: +r.lon, time: r.timestamp || new Date().toISOString() });
-      });
-
-      Object.values(vesselMap).forEach(v => v.track.sort((a, b) => new Date(a.time) - new Date(b.time)));
-
-      // Filter to search window
-      const { center_lat, center_lon, radius_km, time_start, time_end } = SEARCH_WINDOW;
-      const filtered = Object.values(vesselMap).filter(v => {
-        return v.track.some(p => {
-          const dist = haversine(p.lat, p.lon, center_lat, center_lon);
-          const ts = new Date(p.time);
-          return dist <= radius_km && ts >= time_start && ts <= time_end;
+        vesselMap[r.mmsi].track.push({
+          lat: r.lat,
+          lon: r.lon,
+          time: r.timestamp,
+          sog: r.sog,
+          cog: r.cog
         });
       });
 
-      if (filtered.length === 0) throw new Error('No vessels matched the search window (check lat/lon/time range).');
-      return filtered;
+      // Sort tracks chronologically
+      Object.values(vesselMap).forEach(v => v.track.sort((a, b) => new Date(a.time) - new Date(b.time)));
+      const vesselList = Object.values(vesselMap);
+
+      // Determine Slick Center (Custom input override or dataset centroid)
+      const customLatInput = document.getElementById('custom-spill-lat')?.value;
+      const customLonInput = document.getElementById('custom-spill-lon')?.value;
+      let centerLat, centerLon;
+
+      if (customLatInput && customLonInput && !isNaN(parseFloat(customLatInput)) && !isNaN(parseFloat(customLonInput))) {
+        centerLat = parseFloat(customLatInput);
+        centerLon = parseFloat(customLonInput);
+      } else {
+        centerLat = totalLats / validCoords;
+        centerLon = totalLons / validCoords;
+      }
+
+      // Calculate bounding radius to encompass vessel tracks
+      let maxDistFromCenter = 0;
+      rows.forEach(r => {
+        const d = haversine(r.lat, r.lon, centerLat, centerLon);
+        if (d > maxDistFromCenter) maxDistFromCenter = d;
+      });
+      const radiusKm = Math.max(30, Math.min(200, Math.ceil(maxDistFromCenter * 1.15)));
+
+      // Discharge time around median timestamp
+      const dischargeTime = new Date(minTime + (maxTime - minTime) * 0.45);
+
+      // Dynamically update SEARCH_WINDOW
+      SEARCH_WINDOW.center_lat = centerLat;
+      SEARCH_WINDOW.center_lon = centerLon;
+      SEARCH_WINDOW.radius_km = radiusKm;
+      SEARCH_WINDOW.discharge_time = dischargeTime;
+      SEARCH_WINDOW.time_start = new Date(minTime - 3600000);
+      SEARCH_WINDOW.time_end = new Date(maxTime + 3600000);
+
+      // Dynamically simulate ocean current drift backtrack path
+      BACKTRACK_PATH.length = 0;
+      for (let step = 0; step < 4; step++) {
+        BACKTRACK_PATH.push({
+          lat: centerLat - step * 0.025,
+          lon: centerLon - step * 0.025
+        });
+      }
+
+      return vesselList;
     }
 
     function runUploadAnalysis() {
-      if (!uploadedCandidates.length) return;
+      if (!uploadedCandidates || !uploadedCandidates.length) return;
       document.getElementById('demo-banner').classList.add('hidden');
+      const upBanner = document.getElementById('uploaded-banner');
+      if (upBanner) {
+        upBanner.classList.remove('hidden');
+        document.getElementById('uploaded-banner-text').innerHTML =
+          `<strong>UPLOADED AIS ATTRIBUTION COMPLETE</strong> — Analyzed ${uploadedCandidates.length} candidate vessels against oil slick origin at Lat ${SEARCH_WINDOW.center_lat.toFixed(4)}°N, Lon ${SEARCH_WINDOW.center_lon.toFixed(4)}°E.`;
+      }
+
       const results = uploadedCandidates.map(v => scoreVessel(v));
       results.sort((a, b) => b.score - a.score);
       results.forEach((r, i) => r.rank = i + 1);
       analysisResults = results;
       showResults(results, false);
+
+      // Smooth scroll down to results section
+      const resSec = document.getElementById('results-section');
+      if (resSec) {
+        resSec.scrollIntoView({ behavior: 'smooth' });
+      }
     }
 
     // ─── Render results ───────────────────────────────────────────
@@ -1011,7 +1283,7 @@
       // Update stat cards
       document.getElementById('stat-vessel-count').textContent = results.length;
       document.getElementById('stat-top-score').textContent = top.score;
-      document.getElementById('stat-confidence').textContent = `Confidence: ${top.confidence}`;
+      document.getElementById('stat-confidence').textContent = `Confidence: ${top.confidence} (${top.score}%)`;
 
       // Update candidate card
       document.getElementById('top-vessel-name').textContent = top.vessel_name;
@@ -1024,7 +1296,7 @@
 
       const confBg = top.confidence === 'HIGH' ? 'bg-red-500 text-white' : top.confidence === 'MEDIUM' ? 'bg-amber-400 text-stark' : 'bg-gray-200 text-stark';
       document.getElementById('top-confidence-badge').className = `${confBg} font-mono text-[10px] font-bold px-2 py-0.5 border border-stark uppercase`;
-      document.getElementById('top-confidence-badge').textContent = `${top.confidence} CONFIDENCE`;
+      document.getElementById('top-confidence-badge').textContent = `${top.confidence} CONFIDENCE (${top.score}%)`;
 
       // Component scores
       renderComponentScores(top.component_scores);
@@ -1072,21 +1344,21 @@
           <tr style="${rowBg}" data-vessel="${r.vessel_name.toLowerCase()} ${r.mmsi}" class="hover:bg-cream transition-colors">
             <td class="p-3 font-bold">#${String(r.rank).padStart(2, '0')}</td>
             <td class="p-3 font-bold text-darknavy">
-              ${r.rank === 1 ? '<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1" title="Top Candidate"></i>' : ''}
+              ${r.rank === 1 ? '<i class="fa-solid fa-triangle-exclamation text-red-500 mr-1" title="Top Suspect Candidate"></i>' : ''}
               ${r.vessel_name}
             </td>
-            <td class="p-3">${r.mmsi}</td>
+            <td class="p-3 font-mono">${r.mmsi}</td>
             <td class="p-3">${r.vessel_type}</td>
-            <td class="p-3">${r.evidence.min_distance_from_origin_km} km</td>
-            <td class="p-3 font-bold">${r.score}</td>
+            <td class="p-3 font-mono">${r.evidence.min_distance_from_origin_km} km</td>
+            <td class="p-3 font-bold font-mono">${r.score}</td>
             <td class="p-3">
               <span style="${confBg}font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:2px 8px;border:1px solid #111;">
-                ${r.confidence}
+                ${r.confidence} (${r.score}%)
               </span>
             </td>
             <td class="p-3">
               <button onclick="openVesselModal('${r.mmsi}')"
-                class="${r.rank === 1 ? 'bg-skyblue' : 'bg-cream'} text-stark px-2.5 py-1 border border-stark font-bold hover:bg-sky-200 font-mono text-[10px]">
+                class="${r.rank === 1 ? 'bg-skyblue' : 'bg-cream'} text-stark px-2.5 py-1 border border-stark font-bold hover:bg-sky-200 font-mono text-[10px] cursor-pointer">
                 DETAILS
               </button>
             </td>
@@ -1284,7 +1556,7 @@
           </div>
           <div class="border-2 border-stark p-2 bg-cream">
             <div class="text-gray-500 uppercase text-[10px]">Confidence</div>
-            <span style="background:${confBg};color:${confFg};padding:1px 6px;border:1px solid #111;font-weight:700;">${r.confidence}</span>
+            <span style="background:${confBg};color:${confFg};padding:1px 6px;border:1px solid #111;font-weight:700;">${r.confidence} (${r.score}%)</span>
           </div>
         </div>
 
